@@ -1,0 +1,301 @@
+/**
+ * Every user-visible string of the app, in Spanish. Keys are in English.
+ * Components never hardcode text: they read it from here.
+ */
+const es = {
+  app: {
+    title: 'Banco de Horas',
+    subtitle: 'Horas extra, vacaciones y feriados por canjear del equipo.',
+    loading: 'Cargando…',
+    footnote:
+      'Los movimientos con signo positivo suman al saldo; con signo negativo, restan. El saldo de cada persona es siempre la suma de su historial.',
+  },
+  nav: {
+    balances: 'Consultar saldo',
+    team: 'Colaboradores',
+    admin: 'Panel administrador',
+    signOut: 'Cerrar sesión',
+  },
+  team: {
+    title: 'Colaboradores',
+    description: 'El registro del equipo: quién es, desde cuándo está, cómo está contratado y su horario. Las personas inactivas conservan su historial.',
+    count: '{count} colaboradores',
+    countOne: '1 colaborador',
+    noResults: 'No hay colaboradores que coincidan.',
+    ownAccessLocked: 'No puede cambiar su propio acceso: otro administrador debe hacerlo.',
+    filters: {
+      search: 'Buscar por nombre…',
+      team: 'Área',
+      allTeams: 'Todas las áreas',
+      status: 'Estado',
+      active: 'Activos',
+      inactive: 'Inactivos',
+      all: 'Todos',
+    },
+    fields: {
+      team: 'Área',
+      teamPlaceholder: 'ej. Diseño',
+      hireDate: 'Fecha de ingreso',
+      socialSecurityDate: 'Ingreso a la Caja',
+      employmentType: 'Contratación',
+      scheduleStart: 'Hora de entrada',
+      scheduleEnd: 'Hora de salida',
+      schedulePlaceholder: 'ej. 8:00 am',
+      notDefined: 'Sin definir',
+    },
+    employmentTypes: {
+      payroll: 'CCSS (planilla)',
+      'professional-services': 'Servicios profesionales',
+      internship: 'Pasantía',
+    },
+    details: {
+      hireDate: 'Ingreso',
+      socialSecurityDate: 'Caja',
+      employmentType: 'Contratación',
+      schedule: 'Horario',
+      vacation: 'Vacaciones',
+      vacationSince: 'Desde {date}',
+      vacationNone: 'No acumula',
+      none: '—',
+    },
+    tenure: {
+      yearOne: '1 año',
+      years: '{count} años',
+      monthOne: '1 mes',
+      months: '{count} meses',
+      lessThanMonth: 'menos de un mes',
+    },
+  },
+  preview: {
+    enter: 'Ver como colaborador',
+    banner: 'Está viendo la plataforma como la vería un colaborador. Es solo una vista: sus permisos de administrador no cambian.',
+    exit: 'Volver a administrador',
+  },
+  theme: {
+    toLight: 'Activar modo claro',
+    toDark: 'Activar modo oscuro',
+  },
+  login: {
+    title: 'Iniciar sesión',
+    description: 'Ingrese con su cuenta de Google de la empresa para consultar su saldo.',
+    signInWithGoogle: 'Continuar con Google',
+    signingIn: 'Ingresando…',
+    firebaseNotConfigured: 'La autenticación no está configurada en este ambiente.',
+  },
+  movementType: {
+    overtime: 'Horas extra',
+    vacation: 'Vacaciones',
+    holiday: 'Feriados por canjear',
+    birthday: 'Día de cumpleaños',
+  },
+  balances: {
+    searchPlaceholder: 'Buscar por nombre…',
+    noResults: 'No hay colaboradores que coincidan con la búsqueda.',
+    ownBalances: 'Mi saldo',
+    teamBalances: 'Saldos del equipo',
+  },
+  history: {
+    title: 'Historial — {name}',
+    close: 'Cerrar',
+    empty: 'Todavía no hay movimientos registrados.',
+    columns: { date: 'Fecha', type: 'Tipo', amount: 'Cantidad', note: 'Nota', status: 'Estado' },
+    voided: 'Anulado',
+    voidedDetail: 'Anulado: {reason}',
+    edited: 'Editado',
+  },
+  admin: {
+    summaryTitle: 'Resumen general',
+    summaryEmployee: 'Colaborador',
+    inactiveSuffix: '(inactivo)',
+    movementFormTitle: 'Registrar movimiento',
+    fields: {
+      employee: 'Colaborador',
+      type: 'Tipo',
+      amount: 'Cantidad',
+      amountPlaceholder: 'ej. 3 o -1',
+      date: 'Fecha',
+      note: 'Nota',
+      notePlaceholder: 'ej. Se quedó hasta las 7pm por el cierre de campaña',
+    },
+    amountHint:
+      'Cantidad positiva suma al saldo (horas trabajadas de más, día no tomado); negativa resta (horas o días ya usados). Use múltiplos de 0.25.',
+    saveMovement: 'Guardar movimiento',
+    saving: 'Guardando…',
+    saved: 'Guardado',
+    recentTitle: 'Movimientos',
+    recentEmpty: 'Todavía no hay movimientos.',
+    recentColumns: { date: 'Fecha', employee: 'Colaborador', type: 'Tipo', amount: 'Cantidad', note: 'Nota' },
+    movementsFilter: 'Ver movimientos de',
+    movementsFilterRecent: 'Últimos del equipo',
+    movementsLimitHint: 'Se muestran como máximo {count} movimientos.',
+    void: 'Anular',
+    voidPrompt: 'Motivo de la anulación (queda registrado):',
+    editMovement: {
+      edit: 'Editar',
+      save: 'Guardar cambios',
+      cancel: 'Cancelar',
+      hint: 'El cambio ajusta el saldo y queda registrado con quién lo hizo y el valor anterior.',
+    },
+    badges: { edited: 'Editado', imported: 'Importado' },
+    employeesTitle: 'Colaboradores',
+    editEmployee: { edit: 'Editar', save: 'Guardar', cancel: 'Cancelar' },
+    import: {
+      title: 'Importar datos del Excel',
+      description:
+        'Pegue el enlace de la hoja de Google. La información se guarda sin asociarla a nadie todavía: usted la asocia cuando agregue a cada colaborador.',
+      linkLabel: 'Enlace de la hoja',
+      linkPlaceholder: 'https://docs.google.com/spreadsheets/d/…',
+      review: 'Revisar',
+      reviewing: 'Leyendo la hoja…',
+      save: 'Guardar para asociar',
+      saving: 'Guardando…',
+      previewTitle: 'Esto es lo que se guardaría',
+      summary: '{people} personas · {movements} movimientos',
+      openingDate: 'Los saldos de vacaciones quedan con fecha {date}.',
+      mergedTitle: 'Nombres unidos por parecido',
+      mergedItem: '«{alias}» se unió con «{name}»',
+      needReview: '{count} nombres sin pareja clara: se guardan aparte para revisarlos.',
+      holidaysOwed: 'Feriados por reponer: {days} días a favor de {people} personas.',
+      holidaysOwedOne: 'Feriados por reponer: 1 día a favor de 1 persona.',
+      hiddenInSheet: '{count} personas tienen la fila oculta en la hoja (probablemente ya no están en el equipo).',
+      issues: '{count} avisos por revisar (se ven en cada persona).',
+      savedTitle: 'Guardado',
+      saved: 'Nuevas: {created} · Actualizadas: {updated} · Ya asociadas (no se tocan): {alreadyLinked}',
+    },
+    pending: {
+      title: 'Información pendiente de asociar',
+      description:
+        'Personas del Excel que todavía no están asociadas a un colaborador. Al agregar a la persona en Colaboradores, le preguntaremos si quiere asociarla.',
+      empty: 'No hay información pendiente. Importe la hoja en la sección de arriba para traerla.',
+      movementCount: '{count} movimientos',
+      movementCountOne: '1 movimiento',
+      alsoAs: 'También aparece como: {names}',
+      needsReview: 'Revisar nombre',
+      hiddenInSheet: 'Oculta en la hoja',
+      reviewReasons: {
+        'ambiguous-name': 'El nombre se parece a varias personas de la hoja de vacaciones.',
+        'no-match': 'El nombre no se parece a nadie de la hoja de vacaciones.',
+      },
+      issuesBadge: '{count} avisos',
+      issuesToggle: 'Ver avisos',
+      issueCodes: {
+        BALANCE_MISMATCH: 'Las horas de la fila no cuadran con el saldo de la hoja',
+        DATE_ASSUMED_PREVIOUS: 'Fecha ilegible: se usó la fecha anterior',
+        DATE_YEAR_ASSUMED: 'Fecha sin año: se asumió el año del movimiento anterior',
+        DATE_MONTH_NAME: 'Solo decía el mes: se usó el último día del mes',
+        DATE_RANGE_FIRST_DAY: 'Varios días en una celda: se usó el primero',
+        DATE_UNRESOLVED: 'Sin fecha utilizable: no se importó',
+        AMOUNT_INVALID: 'Cantidad no válida: no se importó',
+        ZERO_AMOUNT_SKIPPED: 'Fila con 0 horas: no es un movimiento',
+        OPENING_BALANCE_INFERRED: 'Horas de antes de la hoja: se calculó un saldo anterior',
+        OPENING_BALANCE_UNRESOLVED: 'Saldo anterior sin fecha: no se importó',
+        VACATION_BALANCE_MISMATCH: 'Vacaciones: el total menos lo tomado no da los días disponibles',
+        ACCRUAL_START_UNRESOLVED: 'No se pudo saber desde cuándo acumula vacaciones',
+        HOLIDAY_YEAR_ADJUSTED: 'Un feriado tenía otro año en el encabezado: se usó el año de los demás',
+        HOLIDAY_STATUS_UNKNOWN: 'Feriado con un estado que no se entendió: no se contó como por reponer',
+        HOLIDAY_HEADER_NOT_FOUND: 'No se encontró la fila de fechas de feriados de esta pestaña',
+        CARRYOVER_COUNTED_FROM_DATES: 'Feriados adeudados sin cantidad: se contaron las fechas listadas',
+      },
+      possible: 'Posible colaborador: {name}',
+      chooseEmployee: 'Asociar a…',
+      link: 'Asociar',
+      linking: 'Asociando…',
+      discard: 'Descartar',
+      confirmDiscard: '¿Descartar a {name}? No se asociará a nadie (si vuelve a importar la hoja, reaparece).',
+    },
+    linkOffer: {
+      title: 'Tenemos información del Excel',
+      question: '¿Quiere asociar la información de «{name}» ({movements}) a {employee}?',
+      ambiguous: 'Hay varias personas con un nombre parecido a {employee}. Elija la correcta:',
+      yes: 'Asociar',
+      no: 'Ahora no',
+      done: 'Listo: se asociaron {movements} a {employee}.',
+    },
+    vacation: {
+      startLabel: 'Vacaciones desde',
+      since: 'Acumula vacaciones desde {date}',
+      none: 'Sin acumulación automática de vacaciones',
+      hint: 'Suma 1 día de vacaciones por cada mes completo desde esta fecha. Déjela vacía si no acumula (por ejemplo, pasantes).',
+      creditPast: 'Acreditar ahora los {count} meses ya cumplidos',
+      creditPastHint: 'Desmárquelo si el saldo de vacaciones ya incluye esos meses.',
+    },
+    active: 'Activo',
+    inactive: 'Inactivo',
+    adminBadge: 'Admin',
+    newEmployee: {
+      name: 'Nombre',
+      namePlaceholder: 'Nombre completo',
+      jobTitle: 'Puesto',
+      jobTitlePlaceholder: 'ej. Diseñador',
+      email: 'Correo',
+      emailPlaceholder: 'nombre@correo.com',
+      role: 'Acceso',
+      add: 'Agregar colaborador',
+    },
+    emails: {
+      hint: 'Solo los correos registrados pueden entrar. Agregue el personal y el de la empresa si los usa.',
+      add: 'Agregar correo',
+      addPlaceholder: 'otro@correo.com',
+      remove: 'Quitar {email}',
+    },
+    roles: { member: 'Colaborador', admin: 'Administrador' },
+  },
+  errors: {
+    generic: 'Ocurrió un error inesperado. Intente de nuevo.',
+    network: 'No se pudo conectar. Verifique su conexión a internet.',
+    unauthenticated: 'Su sesión expiró. Vuelva a iniciar sesión.',
+    forbidden: 'No tiene permiso para hacer esto.',
+    notFound: 'No se encontró lo que buscaba.',
+    notRegistered: 'Su correo no está registrado en el Banco de Horas. Pida a un administrador que lo agregue.',
+    accountDeactivated: 'Su cuenta está desactivada. Hable con un administrador.',
+    emailNotVerified: 'Su correo de Google no está verificado.',
+    selfLockout: 'No puede quitarse a sí mismo el acceso de administrador.',
+    ownEmailRemoval: 'No puede quitar el correo con el que inició sesión.',
+    emailTaken: 'Ese correo ya pertenece a otro colaborador.',
+    employeeInactive: 'El colaborador está inactivo y no admite movimientos nuevos.',
+    alreadyVoided: 'Ese movimiento ya estaba anulado.',
+    movementVoided: 'Un movimiento anulado no se puede editar.',
+    sheetNotReadable: 'No se pudo leer la hoja. Verifique que esté compartida por enlace.',
+    profileNotPending: 'Esa información ya no está pendiente.',
+    startDateMismatch: 'El colaborador ya tiene otra fecha de inicio de vacaciones; asociarla haría que se contradigan.',
+    accrualAlreadyRunning: 'El colaborador ya acumuló días de vacaciones; asociar el saldo importado los contaría dos veces.',
+    popupClosed: 'Se cerró la ventana de Google antes de terminar.',
+    validation: {
+      REQUIRED: 'Este campo es obligatorio.',
+      TOO_LONG: 'El texto es demasiado largo.',
+      INVALID_TYPE: 'El valor no es válido.',
+      AMOUNT_ZERO_OR_INVALID: 'Ingrese una cantidad distinta de cero.',
+      AMOUNT_NOT_STEP: 'La cantidad debe ser múltiplo de 0.25.',
+      AMOUNT_TOO_LARGE: 'La cantidad es demasiado grande.',
+      INVALID_DATE: 'La fecha no es válida.',
+      INVALID_EMAIL: 'El correo no es válido.',
+      INVALID_ROLE: 'El tipo de acceso no es válido.',
+      INVALID_EMPLOYMENT_TYPE: 'El tipo de contratación no es válido.',
+      INVALID_SHEET_URL: 'El enlace no es de una hoja de Google Sheets.',
+      TOO_MANY_EMAILS: 'Un colaborador puede tener hasta 5 correos.',
+      EMPTY_PATCH: 'No hay cambios para guardar.',
+    },
+  },
+};
+
+export default es;
+
+/** Replaces `{name}` placeholders (same single-brace syntax as the rest of the Event+ projects) */
+export function interpolate(template, values = {}) {
+  return template.replace(/\{(\w+)\}/g, (match, key) => (key in values ? String(values[key]) : match));
+}
+
+/** "1 movimiento" / "5 movimientos" */
+export function movementCountText(count) {
+  return count === 1 ? es.admin.pending.movementCountOne : interpolate(es.admin.pending.movementCount, { count });
+}
+
+/** "2 años y 3 meses", "1 año", "5 meses", "menos de un mes" */
+export function tenureText(tenure) {
+  if (!tenure) return '';
+  const { yearOne, years, monthOne, months, lessThanMonth } = es.team.tenure;
+  const parts = [];
+  if (tenure.years) parts.push(tenure.years === 1 ? yearOne : interpolate(years, { count: tenure.years }));
+  if (tenure.months) parts.push(tenure.months === 1 ? monthOne : interpolate(months, { count: tenure.months }));
+  return parts.length ? parts.join(' y ') : lessThanMonth;
+}

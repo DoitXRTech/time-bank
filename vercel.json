@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/accrue-vacation",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

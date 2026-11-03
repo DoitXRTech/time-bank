@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens, aligned with admin-eventplus (DESIGN.md): near-black ink, near-white paper,
+ * one green accent (#33CA75) that only means "active / positive / go", flat surfaces.
+ * Dark mode is class-based (`.dark` on <html>), as in Event+.
+ *
+ * `--primary` (#33CA75) is for fills, outlines and focus rings. Green and red used AS TEXT on a
+ * light background are darkened (`--primary-text`, `--danger-text`) to reach WCAG AA (4.5:1);
+ * in dark mode the brand values already pass.
+ */
+:root {
+  --paper: #f8fcfa;
+  --panel: #ffffff;
+  --ink: #080808;
+  --ink-soft: #5b605c;
+  --muted: #848985;
+  --line: #d0d7d3;
+  --divider: #e9e9eb;
+  --chip: #e4ede8;
+  --primary: #33ca75;
+  --primary-wash: rgba(51, 202, 117, 0.2);
+  --primary-text: #0e6b37;
+  --danger: #ff3a3d;
+  --danger-wash: rgba(255, 58, 61, 0.12);
+  --danger-text: #c41f2e;
+  /* effekktive glow: a faint tint on the light theme, full strength on dark */
+  --glow-blue: rgba(47, 75, 255, 0.1);
+  --glow-orange: rgba(232, 66, 30, 0.1);
+}
+
+.dark {
+  --paper: #080808;
+  --panel: #252628;
+  --ink: #f4f6f5;
+  --ink-soft: #a9aeab;
+  --muted: #8e938f;
+  --line: #444444;
+  --divider: rgba(255, 255, 255, 0.12);
+  --chip: rgba(255, 255, 255, 0.1);
+  --primary-wash: rgba(51, 202, 117, 0.2);
+  --primary-text: #33ca75;
+  --danger-wash: rgba(255, 58, 61, 0.2);
+  --danger-text: #ff3a3d;
+  --glow-blue: rgba(47, 75, 255, 0.4);
+  --glow-orange: rgba(232, 66, 30, 0.35);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-paper font-sans text-sm text-ink;
+    /* Soft cross-fade when the theme is switched */
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .brand-glow {
+    background-image: radial-gradient(ellipse 60% 50% at 100% 100%, var(--glow-orange), transparent 70%),
+      radial-gradient(ellipse 60% 55% at 70% 105%, var(--glow-blue), transparent 70%);
+  }
+
+  /* Numbers stay in Inter (one-family rule); tabular figures keep columns aligned */
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Primary: green wash + green text + 1px green outline. Flat: no shadow, no gradient. */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[8px] border border-primary bg-primary-wash px-4 text-sm font-medium text-primary-text transition duration-150 hover:bg-[rgba(51,202,117,0.3)] active:scale-[0.98] disabled:cursor-default disabled:opacity-50 disabled:active:scale-100 md:min-h-[40px];
+  }
+
+  /* Secondary / ghost: neutral outline, alpha fill on hover */
+  .btn-ghost {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[8px] border border-line bg-transparent px-4 text-sm font-medium text-ink transition duration-150 hover:bg-chip active:scale-[0.98] disabled:cursor-default disabled:opacity-50 disabled:active:scale-100 md:min-h-[40px];
+  }
+
+  /* Danger: same outline + wash idiom as primary, red hue. Compact: lives inside table rows. */
+  .btn-danger {
+    @apply inline-flex min-h-[36px] items-center justify-center rounded-[6px] border border-danger bg-danger-wash px-3 text-xs font-medium text-danger-text transition duration-150 hover:bg-[rgba(255,58,61,0.25)] active:scale-[0.98] disabled:cursor-default disabled:opacity-50 disabled:active:scale-100;
+  }
+
+  .field-label {
+    @apply flex flex-col gap-1.5 text-xs font-bold text-ink-soft;
+  }
+
+  .field-input {
+    @apply min-h-[44px] rounded-[8px] border border-line bg-panel px-3 text-sm font-normal text-ink transition duration-150 placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary md:min-h-[40px];
+  }
+
+  /*
+   * One padding for every surface (panels, balance cards, history): text inside them starts on
+   * the same line, 20px from the edge.
+   */
+  .panel {
+    @apply rounded-[16px] border border-line bg-panel p-5;
+  }
+
+  /*
+   * Form rows with a fixed number of columns, so a row always ends on the right edge of its
+   * panel (auto-fit left an empty column whenever a field spans the full width).
+   * Fields sit on the bottom line even when a label wraps.
+   */
+  .form-grid-4 {
+    @apply grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-4;
+  }
+
+  .form-grid-5 {
+    @apply grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-5;
+  }
+
+  /* Chip / badge: alpha fill, no border */
+  .tag {
+    @apply inline-block whitespace-nowrap rounded-[6px] bg-chip px-2 py-0.5 text-xs font-medium text-ink-soft;
+  }
+
+  /* Table header cell: Event+ "label" style (12px / 700) */
+  .th {
+    @apply pb-2 pr-3 text-left text-xs font-bold text-ink-soft;
+  }
+}
+
+/* ---------- Motion: short, soft, one idea (things appear a little at a time) ---------- */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    /* `none` (not translateY(0)) so a finished animation leaves no stacking context behind */
+    transform: none;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@layer components {
+  .animate-fade-up {
+    animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out both;
+  }
+
+  /* Children of a list appear one after another (page sections, cards) */
+  .reveal-list > * {
+    animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .reveal-list > :nth-child(2) { animation-delay: 60ms; }
+  .reveal-list > :nth-child(3) { animation-delay: 120ms; }
+  .reveal-list > :nth-child(4) { animation-delay: 180ms; }
+  .reveal-list > :nth-child(5) { animation-delay: 240ms; }
+  .reveal-list > :nth-child(6) { animation-delay: 300ms; }
+  .reveal-list > :nth-child(n + 7) { animation-delay: 360ms; }
+
+  /* Table rows fade in with a short stagger for the first rows */
+  .reveal-rows > tr {
+    animation: fade-in 0.35s ease-out both;
+  }
+  .reveal-rows > tr:nth-child(2) { animation-delay: 30ms; }
+  .reveal-rows > tr:nth-child(3) { animation-delay: 60ms; }
+  .reveal-rows > tr:nth-child(4) { animation-delay: 90ms; }
+  .reveal-rows > tr:nth-child(5) { animation-delay: 120ms; }
+  .reveal-rows > tr:nth-child(n + 6) { animation-delay: 150ms; }
+
+  /* Placeholder while data loads */
+  .skeleton {
+    @apply animate-pulse rounded-[8px] bg-chip;
+  }
+}
+
+/* People who ask their system for less motion get none */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
