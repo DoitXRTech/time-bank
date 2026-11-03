@@ -6,6 +6,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 const mockReplace = jest.fn();
 let mockPathname = '/';
 let mockAuth;
+let mockPendingRequests = 0;
 
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: mockPathname, replace: mockReplace }) }));
 jest.mock('next/image', () => ({ __esModule: true, default: ({ alt }) => require('react').createElement('img', { alt }) }));
@@ -14,6 +15,8 @@ jest.mock('@/context/AuthContext', () => ({
   AUTH_STATUS: { LOADING: 'loading', SIGNED_OUT: 'signed-out', READY: 'ready' },
   useAuth: () => mockAuth,
 }));
+
+jest.mock('@/context/RequestsInboxContext', () => ({ useRequestsInbox: () => ({ count: mockPendingRequests }) }));
 
 const member = { id: 'm1', name: 'Luis Colaborador', role: 'member' };
 const admin = { id: 'a1', name: 'Ana Admin', role: 'admin' };
@@ -38,6 +41,7 @@ const signIn = (employee, { previewAsMember = false } = {}) => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockPathname = '/';
+  mockPendingRequests = 0;
 });
 
 describe('the page shell', () => {
@@ -46,7 +50,7 @@ describe('the page shell', () => {
     render(<AppShell>contenido</AppShell>);
 
     expect(screen.queryByRole('navigation')).toBeNull();
-    expect(screen.queryByText('Colaboradores')).toBeNull();
+    expect(screen.queryByText('Equipo')).toBeNull();
     expect(screen.queryByText('Panel administrador')).toBeNull();
     expect(screen.getByText('contenido')).toBeTruthy();
   });
@@ -57,8 +61,35 @@ describe('the page shell', () => {
 
     const tabs = screen.getByRole('navigation');
     expect(tabs.textContent).toContain('Consultar saldo');
-    expect(tabs.textContent).toContain('Colaboradores');
+    expect(tabs.textContent).toContain('Equipo');
     expect(tabs.textContent).toContain('Panel administrador');
+  });
+});
+
+describe('the alert for collaborator requests', () => {
+  it('shows the admin tab with the number of requests waiting for a decision', () => {
+    mockPendingRequests = 3;
+    signIn(admin);
+    render(<AppShell>contenido</AppShell>);
+
+    const adminTab = screen.getByRole('link', { name: /Panel administrador/ });
+    expect(adminTab.textContent).toContain('3');
+    expect(adminTab.textContent).toContain('3 solicitudes pendientes');
+  });
+
+  it('says "1 solicitud pendiente" in the singular for screen readers', () => {
+    mockPendingRequests = 1;
+    signIn(admin);
+    render(<AppShell>contenido</AppShell>);
+
+    expect(screen.getByRole('link', { name: /Panel administrador/ }).textContent).toContain('1 solicitud pendiente');
+  });
+
+  it('shows no badge when nothing is waiting', () => {
+    signIn(admin);
+    render(<AppShell>contenido</AppShell>);
+
+    expect(screen.getByRole('link', { name: /Panel administrador/ }).textContent).toBe('Panel administrador');
   });
 });
 

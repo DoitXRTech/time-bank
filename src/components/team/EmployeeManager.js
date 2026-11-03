@@ -14,10 +14,10 @@ import { captureClientException } from '../../lib/clientMonitoring';
 function FiltersBar({ filters, teams, onChange }) {
   const labels = es.team.filters;
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-4">
+    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">
       <input
         type="search"
-        className="field-input w-full max-w-[260px]"
+        className="field-input w-full sm:max-w-[260px]"
         placeholder={labels.search}
         aria-label={labels.search}
         value={filters.query}
@@ -61,6 +61,9 @@ export function EmployeeManager({ employees, loading, onChanged, onImportLinked 
   const [busy, setBusy] = useState(false);
   // Pending spreadsheet information that looks like the collaborator that was just added
   const [offer, setOffer] = useState(null);
+  // Only one card is open at a time; opening another closes the previous one
+  const [expandedId, setExpandedId] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   const teams = useMemo(() => teamsOf(employees), [employees]);
   const visible = useMemo(() => filterEmployees(employees, filters), [employees, filters]);
@@ -102,8 +105,16 @@ export function EmployeeManager({ employees, loading, onChanged, onImportLinked 
       const response = await apiPost('/api/employees', payload);
       createdEmployee = response.employee;
     });
-    if (created) await offerPendingInformation(createdEmployee);
+    if (created) {
+      setCreating(false);
+      await offerPendingInformation(createdEmployee);
+    }
     return created;
+  }
+
+  function openCreate() {
+    setError(null);
+    setCreating(true);
   }
 
   const count = visible.length;
@@ -111,7 +122,12 @@ export function EmployeeManager({ employees, loading, onChanged, onImportLinked 
   return (
     <Section title={es.team.title}>
       <p className="mb-4 text-xs text-ink-soft">{es.team.description}</p>
-      <FiltersBar filters={filters} teams={teams} onChange={setFilters} />
+      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <FiltersBar filters={filters} teams={teams} onChange={setFilters} />
+        <button type="button" className="btn shrink-0" onClick={openCreate}>
+          {es.team.addPerson}
+        </button>
+      </div>
       <p className="mb-2 text-xs font-bold text-ink-soft">{count === 1 ? es.team.countOne : interpolate(es.team.count, { count })}</p>
 
       {loading && !employees.length && (
@@ -130,17 +146,19 @@ export function EmployeeManager({ employees, loading, onChanged, onImportLinked 
           isSelf={employee.id === currentEmployee?.id}
           signedInEmail={signedInEmail}
           busy={busy}
+          expanded={expandedId === employee.id}
+          onToggleExpanded={() => setExpandedId((current) => (current === employee.id ? null : employee.id))}
           onToggleActive={toggleActive}
           onChangeEmails={changeEmails}
           onEditProfile={patchEmployee}
         />
       ))}
 
-      <ErrorNotice error={error} />
+      <ErrorNotice error={creating ? null : error} />
 
       {offer && <LinkSuggestion offer={offer} onLinked={onImportLinked ?? onChanged} onDismiss={() => setOffer(null)} />}
 
-      <EmployeeCreateForm teams={teams} busy={busy} onCreate={createEmployee} />
+      {creating && <EmployeeCreateForm teams={teams} busy={busy} error={error} onCreate={createEmployee} onCancel={() => setCreating(false)} />}
     </Section>
   );
 }

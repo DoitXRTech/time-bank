@@ -59,7 +59,7 @@ export default function LoginPage() {
       </main>
 
       <div className="animate-fade-in [animation-delay:240ms]">
-        <SiteFooter centered />
+        <SiteFooter />
       </div>
     </BrandBackdrop>
   );

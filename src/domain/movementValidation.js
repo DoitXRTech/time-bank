@@ -33,7 +33,7 @@ function validateType(type) {
   return type;
 }
 
-function validateAmount(rawAmount) {
+export function validateAmount(rawAmount) {
   const amount = typeof rawAmount === 'string' ? Number(rawAmount) : rawAmount;
   if (!Number.isFinite(amount) || amount === 0) {
     fail('amount', 'AMOUNT_ZERO_OR_INVALID', 'amount must be a non-zero number');

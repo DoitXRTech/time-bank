@@ -15,10 +15,15 @@ import meRoute from '../../src/pages/api/me';
 import movementsRoute from '../../src/pages/api/movements/index';
 import movementRoute from '../../src/pages/api/movements/[id]/index';
 import voidRoute from '../../src/pages/api/movements/[id]/void';
+import requestsRoute from '../../src/pages/api/requests/index';
+import approveRoute from '../../src/pages/api/requests/[id]/approve';
+import rejectRoute from '../../src/pages/api/requests/[id]/reject';
+import cancelRoute from '../../src/pages/api/requests/[id]/cancel';
 import * as employeesService from '../../lib/services/employeesService';
 import * as importLinkService from '../../lib/services/importLinkService';
 import * as importStagingService from '../../lib/services/importStagingService';
 import * as movementsService from '../../lib/services/movementsService';
+import * as requestsService from '../../lib/services/requestsService';
 
 const mockVerifyIdToken = jest.fn();
 
@@ -26,6 +31,7 @@ jest.mock('../../lib/firebase-admin', () => ({ getAdminAuth: () => ({ verifyIdTo
 jest.mock('../../lib/monitoring', () => ({ captureException: jest.fn() }));
 jest.mock('../../lib/services/employeesService');
 jest.mock('../../lib/services/movementsService');
+jest.mock('../../lib/services/requestsService');
 jest.mock('../../lib/services/importStagingService', () => ({
   ...jest.requireActual('../../lib/services/importStagingService'),
   stageImport: jest.fn(),
@@ -65,6 +71,7 @@ async function call(route, { method = 'GET', query = {}, body, as = member } = {
 const allServices = () => [
   ...Object.values(employeesService).filter((fn) => fn !== employeesService.resolveSignedInEmployee),
   ...Object.values(movementsService),
+  ...Object.values(requestsService),
   importStagingService.stageImport,
   importStagingService.previewImport,
   importStagingService.listImportProfiles,
@@ -101,6 +108,48 @@ describe('a collaborator can reach their own balances', () => {
   });
 });
 
+describe('a collaborator can ask for overtime and vacation', () => {
+  it('POST /api/requests files a request under their own name', async () => {
+    requestsService.createRequest.mockResolvedValue({ id: 'r1' });
+    const body = { kind: 'vacation', date: '2026-11-17', amount: 2 };
+
+    const res = await call(requestsRoute, { method: 'POST', body });
+
+    expect(res.statusCode).toBe(201);
+    expect(requestsService.createRequest).toHaveBeenCalledWith(member, body);
+  });
+
+  it('GET /api/requests?employeeId=<themself> lists what they asked for', async () => {
+    requestsService.listEmployeeRequests.mockResolvedValue([{ id: 'r1' }]);
+    const res = await call(requestsRoute, { query: { employeeId: 'm1' } });
+
+    expect(res.statusCode).toBe(200);
+    expect(requestsService.listEmployeeRequests).toHaveBeenCalledWith('m1', undefined);
+  });
+
+  it('POST /api/requests/:id/cancel is open to them (the service only lets the owner withdraw it)', async () => {
+    requestsService.cancelRequest.mockResolvedValue({ id: 'r1', status: 'cancelled' });
+    const res = await call(cancelRoute, { method: 'POST', query: { id: 'r1' } });
+
+    expect(res.statusCode).toBe(200);
+    expect(requestsService.cancelRequest).toHaveBeenCalledWith(member, 'r1');
+  });
+
+  it("GET /api/requests?employeeId=<someone else> is forbidden (nobody else's requests)", async () => {
+    const res = await call(requestsRoute, { query: { employeeId: 'someone-else' } });
+
+    expect(res.statusCode).toBe(403);
+    expect(requestsService.listEmployeeRequests).not.toHaveBeenCalled();
+  });
+
+  it('GET /api/requests without a person (the inbox of the admins) is forbidden', async () => {
+    const res = await call(requestsRoute);
+
+    expect(res.statusCode).toBe(403);
+    expect(requestsService.listPendingRequests).not.toHaveBeenCalled();
+  });
+});
+
 describe('a collaborator cannot reach anything else', () => {
   it("GET /api/movements?employeeId=<someone else> is forbidden (nobody else's history)", async () => {
     const res = await call(movementsRoute, { query: { employeeId: 'someone-else' } });
@@ -118,6 +167,8 @@ describe('a collaborator cannot reach anything else', () => {
     ['POST /api/movements (register a movement)', movementsRoute, { method: 'POST', body: { employeeId: 'm1', type: 'overtime', amount: 99, date: '2026-01-01' } }],
     ['PATCH /api/movements/:id (edit a movement)', movementRoute, { method: 'PATCH', query: { id: 'x' }, body: { amount: 1 } }],
     ['POST /api/movements/:id/void', voidRoute, { method: 'POST', query: { id: 'x' }, body: { reason: 'r' } }],
+    ['POST /api/requests/:id/approve (decide their own request)', approveRoute, { method: 'POST', query: { id: 'r1' } }],
+    ['POST /api/requests/:id/reject', rejectRoute, { method: 'POST', query: { id: 'r1' }, body: { reason: 'r' } }],
     ['POST /api/employees (add a collaborator)', employeesRoute, { method: 'POST', body: { name: 'N', emails: ['n@x.com'] } }],
     ['PATCH /api/employees/:id (make themself admin)', employeeRoute, { method: 'PATCH', query: { id: 'm1' }, body: { role: 'admin' } }],
     ['POST /api/imports (load the sheet)', importsRoute, { method: 'POST', body: { sheetUrl: 'https://docs.google.com/spreadsheets/d/x' } }],
@@ -152,6 +203,17 @@ describe('an admin still reaches the same routes', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.employees).toEqual([admin, member]);
+  });
+
+  it('GET /api/requests (the inbox) and approving or rejecting a request are allowed', async () => {
+    requestsService.listPendingRequests.mockResolvedValue([]);
+    requestsService.approveRequest.mockResolvedValue({ id: 'r1' });
+    requestsService.rejectRequest.mockResolvedValue({ id: 'r2' });
+
+    expect((await call(requestsRoute, { as: admin })).statusCode).toBe(200);
+    expect((await call(approveRoute, { as: admin, method: 'POST', query: { id: 'r1' } })).statusCode).toBe(200);
+    expect((await call(rejectRoute, { as: admin, method: 'POST', query: { id: 'r2' }, body: { reason: 'No' } })).statusCode).toBe(200);
+    expect(requestsService.rejectRequest).toHaveBeenCalledWith(admin, 'r2', 'No');
   });
 
   it('GET /api/movements (team feed) and PATCH /api/employees/:id are allowed', async () => {

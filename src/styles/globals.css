@@ -95,6 +95,27 @@
     @apply inline-flex min-h-[36px] items-center justify-center rounded-[6px] border border-danger bg-danger-wash px-3 text-xs font-medium text-danger-text transition duration-150 hover:bg-[rgba(255,58,61,0.25)] active:scale-[0.98] disabled:cursor-default disabled:opacity-50 disabled:active:scale-100;
   }
 
+  /* Danger, full size: the confirm button of a dialog (same idiom as .btn, red hue) */
+  .btn-danger-lg {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[8px] border border-danger bg-danger-wash px-4 text-sm font-medium text-danger-text transition duration-150 hover:bg-[rgba(255,58,61,0.25)] active:scale-[0.98] disabled:cursor-default disabled:opacity-50 disabled:active:scale-100 md:min-h-[40px];
+  }
+
+  /* Dialogs: dimmed, blurred backdrop + a 24px card that pops in (flat, no shadow) */
+  .dialog-backdrop {
+    @apply fixed inset-0 z-50 flex items-end justify-center bg-black/65 p-4 backdrop-blur-sm sm:items-center;
+    animation: fade-in 0.2s ease-out both;
+  }
+
+  .dialog-card {
+    @apply max-h-[calc(100dvh-2rem)] w-full max-w-[460px] overflow-y-auto rounded-[24px] border border-line bg-panel p-6;
+    animation: pop-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Wide variant: forms */
+  .dialog-card-lg {
+    @apply max-w-[820px];
+  }
+
   .field-label {
     @apply flex flex-col gap-1.5 text-xs font-bold text-ink-soft;
   }
@@ -104,11 +125,25 @@
   }
 
   /*
+   * Selects draw their own chevron so it sits 12px from the right edge, the same inset as the text
+   * on the left (the native arrow hugs the border and ignores padding).
+   */
+  select.field-input {
+    @apply appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235b605c' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+  }
+
+  .dark select.field-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a9aeab' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /*
    * One padding for every surface (panels, balance cards, history): text inside them starts on
    * the same line, 20px from the edge.
    */
   .panel {
-    @apply rounded-[16px] border border-line bg-panel p-5;
+    @apply rounded-[16px] border border-line bg-panel p-4 sm:p-5;
   }
 
   /*
@@ -145,6 +180,17 @@
   to {
     opacity: 1;
     /* `none` (not translateY(0)) so a finished animation leaves no stacking context behind */
+    transform: none;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
     transform: none;
   }
 }
@@ -204,5 +250,53 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Tables that turn into stacked cards on phones (add `table-stack` to the <table> and a
+ * `data-label` to each <td>): the header row is hidden and each cell shows its own label.
+ */
+@media (max-width: 639px) {
+  .table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tr,
+  .table-stack td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-stack tr {
+    padding: 0.75rem 0;
+  }
+
+  .table-stack td {
+    padding: 0.2rem 0;
+  }
+
+  /* Label above its value, so cells with badges or several lines keep their normal flow */
+  .table-stack td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+
+  /* Cells without a label (actions, the inline edit form) use the full width */
+  .table-stack td:not([data-label])::before {
+    content: none;
+  }
+
+  .table-stack td:not([data-label]) {
+    padding-top: 0.5rem;
   }
 }

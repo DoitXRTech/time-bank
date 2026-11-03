@@ -1,4 +1,20 @@
-import { formatDate, formatSignedAmount, todayIsoDate } from '@/domain/format';
+import { formatAmount, formatDate, formatMonth, formatSignedAmount, todayIsoDate } from '@/domain/format';
+
+describe('formatAmount', () => {
+  it('shows an amount with its unit and no sign (for what is only being asked for)', () => {
+    expect(formatAmount(5, 'h')).toBe('5 h');
+    expect(formatAmount(2.5, 'd')).toBe('2.5 d');
+    expect(formatAmount(0.25, 'h')).toBe('0.25 h');
+  });
+});
+
+describe('formatMonth', () => {
+  it('names the month and the year without shifting the month by the timezone', () => {
+    const text = formatMonth('2026-10');
+    expect(text).toContain('2026');
+    expect(text.toLowerCase()).toContain('octubre');
+  });
+});
 
 describe('formatSignedAmount', () => {
   it('prefixes positives with + and negatives with a real minus sign', () => {

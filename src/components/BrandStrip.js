@@ -9,7 +9,7 @@ export function BrandStrip({ className = '' }) {
   const subBrands = SUB_BRANDS.filter((brand) => brand.logo);
 
   return (
-    <ul className={`flex flex-wrap items-center gap-x-8 gap-y-4 ${className}`}>
+    <ul className={`flex flex-wrap items-center gap-x-6 gap-y-4 sm:gap-x-8 ${className}`}>
       <li>
         <BrandLogo brand={MAIN_BRAND} className="h-5" />
       </li>

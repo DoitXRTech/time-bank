@@ -17,6 +17,17 @@ export function formatSignedAmount(value, unit) {
   return `${sign}${formatMagnitude(rounded)} ${unit}`;
 }
 
+/** "5 h", "2.5 d": an amount without a sign, for things not yet in the balance (requests) */
+export function formatAmount(value, unit) {
+  return `${formatMagnitude(value)} ${unit}`;
+}
+
+/** "octubre de 2026" for a YYYY-MM month */
+export function formatMonth(isoMonth, locale = 'es-CR') {
+  const date = new Date(`${isoMonth}-01T12:00:00`);
+  return date.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+}
+
 /** Parses a YYYY-MM-DD calendar date without letting the timezone shift the day */
 export function formatDate(isoDate, locale = 'es-CR') {
   const date = new Date(`${isoDate}T12:00:00`);

@@ -4,6 +4,8 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { HistoryPanel } from '../components/HistoryPanel';
 import { RequireAuth } from '../components/RequireAuth';
 import { Section } from '../components/Section';
+import { MyRequests } from '../components/requests/MyRequests';
+import { RequestForm } from '../components/requests/RequestForm';
 import { BalanceCardSkeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import es from '../content/es';
@@ -17,6 +19,7 @@ function normalize(text) {
 function BalancesView() {
   const { data, error, loading } = useApiData('/api/employees');
   const { employee: signedInEmployee, isAdmin, previewAsMember } = useAuth();
+  const ownRequests = useApiData(signedInEmployee ? `/api/requests?employeeId=${encodeURIComponent(signedInEmployee.id)}` : null);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
@@ -72,6 +75,14 @@ function BalancesView() {
       {selectedEmployee && (
         <HistoryPanel key={selectedEmployee.id} employee={selectedEmployee} onClose={() => setSelectedId('')} />
       )}
+
+      <RequestForm onSent={ownRequests.reload} />
+      <MyRequests
+        requests={ownRequests.data?.requests ?? []}
+        loading={ownRequests.loading}
+        error={ownRequests.error}
+        onChanged={ownRequests.reload}
+      />
     </>
   );
 }

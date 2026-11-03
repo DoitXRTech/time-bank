@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { ErrorNotice } from '../ErrorNotice';
 import { Section } from '../Section';
 import { Skeleton } from '../Skeleton';
@@ -48,6 +49,7 @@ function PendingProfileRow({ profile, employees, onChanged }) {
   const [employeeId, setEmployeeId] = useState(suggested?.id ?? '');
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const labels = es.admin.pending;
 
   async function run(kind, action) {
@@ -64,7 +66,7 @@ function PendingProfileRow({ profile, employees, onChanged }) {
 
   const link = () => run('link', () => apiPost(`/api/import-profiles/${encodeURIComponent(profile.key)}/link`, { employeeId }));
   const discard = () => {
-    if (!window.confirm(interpolate(labels.confirmDiscard, { name: profile.name }))) return;
+    setConfirmingDiscard(false);
     run('discard', () => apiPost(`/api/import-profiles/${encodeURIComponent(profile.key)}/discard`));
   };
 
@@ -107,7 +109,7 @@ function PendingProfileRow({ profile, employees, onChanged }) {
           <button type="button" className="btn" disabled={!employeeId || busy !== null} onClick={link}>
             {busy === 'link' ? labels.linking : labels.link}
           </button>
-          <button type="button" className="btn-ghost" disabled={busy !== null} onClick={discard}>
+          <button type="button" className="btn-ghost" disabled={busy !== null} onClick={() => setConfirmingDiscard(true)}>
             {labels.discard}
           </button>
         </div>
@@ -115,6 +117,16 @@ function PendingProfileRow({ profile, employees, onChanged }) {
 
       {profile.issueCount > 0 && <IssueList profile={profile} />}
       <ErrorNotice error={error} />
+      {confirmingDiscard && (
+        <ConfirmDialog
+          tone="danger"
+          title={interpolate(labels.discardDialog.title, { name: profile.name })}
+          message={labels.discardDialog.message}
+          confirmLabel={labels.discardDialog.confirm}
+          onConfirm={discard}
+          onCancel={() => setConfirmingDiscard(false)}
+        />
+      )}
     </div>
   );
 }

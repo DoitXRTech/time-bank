@@ -3,13 +3,16 @@ import { ImportPanel } from '../components/admin/ImportPanel';
 import { MovementForm } from '../components/admin/MovementForm';
 import { PendingProfiles } from '../components/admin/PendingProfiles';
 import { movementsUrl, RecentMovements } from '../components/admin/RecentMovements';
+import { RequestsInbox } from '../components/admin/RequestsInbox';
 import { SummaryTable } from '../components/admin/SummaryTable';
 import { ErrorNotice } from '../components/ErrorNotice';
 import { RequireAuth } from '../components/RequireAuth';
+import { useRequestsInbox } from '../context/RequestsInboxContext';
 import { useApiData } from '../hooks/useApiData';
 
 function AdminView() {
   const [filterEmployeeId, setFilterEmployeeId] = useState('');
+  const requestsInbox = useRequestsInbox();
   const employeesResource = useApiData('/api/employees');
   const movementsResource = useApiData(movementsUrl(filterEmployeeId));
   const pendingResource = useApiData('/api/import-profiles');
@@ -24,6 +27,12 @@ function AdminView() {
     movementsResource.reload();
   }
 
+  // Approving a request registers a movement; rejecting one only empties the inbox (and the header badge)
+  function reloadAfterRequestDecided() {
+    reloadAll();
+    requestsInbox.reload();
+  }
+
   // Linking imported information creates movements and moves balances, and empties the pending list
   function reloadAfterImportLinked() {
     reloadAll();
@@ -33,6 +42,13 @@ function AdminView() {
   return (
     <>
       <ErrorNotice error={employeesResource.error ?? movementsResource.error ?? pendingResource.error} />
+      <RequestsInbox
+        requests={requestsInbox.requests}
+        employees={employees}
+        loading={requestsInbox.loading}
+        error={requestsInbox.error}
+        onChanged={reloadAfterRequestDecided}
+      />
       <SummaryTable employees={employees} loading={employeesResource.loading} />
       <MovementForm employees={employees} onSaved={reloadAll} />
       <RecentMovements

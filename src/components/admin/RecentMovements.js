@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { ErrorNotice } from '../ErrorNotice';
 import { Section } from '../Section';
 import { TableRowsSkeleton } from '../Skeleton';
@@ -6,7 +7,7 @@ import { MovementEditForm } from './MovementEditForm';
 import es, { interpolate } from '../../content/es';
 import { balanceTone } from '../../domain/balances';
 import { formatDate, formatSignedAmount } from '../../domain/format';
-import { MOVEMENT_UNITS } from '../../domain/movementTypes';
+import { MAX_VOID_REASON_LENGTH, MOVEMENT_UNITS } from '../../domain/movementTypes';
 import { apiPost } from '../../lib/apiClient';
 import { TONE_CLASSES } from '../toneClasses';
 
@@ -27,18 +28,19 @@ function MovementRow({ movement, employeeName, busy, onEdit, onVoid }) {
 
   return (
     <tr className={`border-b border-divider last:border-b-0 ${isVoided ? 'opacity-50' : ''}`}>
-      <td className="py-2.5 pr-3 align-top">{formatDate(movement.date)}</td>
-      <td className="py-2.5 pr-3 align-top">{employeeName}</td>
-      <td className="py-2.5 pr-3 align-top">
+      <td data-label={es.admin.recentColumns.date} className="py-2.5 pr-3 align-top">{formatDate(movement.date)}</td>
+      <td data-label={es.admin.recentColumns.employee} className="py-2.5 pr-3 align-top">{employeeName}</td>
+      <td data-label={es.admin.recentColumns.type} className="py-2.5 pr-3 align-top">
         <span className="tag">{es.movementType[movement.type]}</span>
       </td>
-      <td className={`num whitespace-nowrap py-2.5 pr-3 align-top font-semibold ${tone} ${isVoided ? 'line-through' : ''}`}>
+      <td data-label={es.admin.recentColumns.amount} className={`num whitespace-nowrap py-2.5 pr-3 align-top font-semibold ${tone} ${isVoided ? 'line-through' : ''}`}>
         {formatSignedAmount(movement.amount, MOVEMENT_UNITS[movement.type])}
       </td>
-      <td className="py-2.5 pr-3 align-top">
+      <td data-label={es.admin.recentColumns.note} className="py-2.5 pr-3 align-top">
         {movement.note}
         <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
           {movement.source === 'import' && <span className="tag">{es.admin.badges.imported}</span>}
+          {movement.source === 'request' && <span className="tag">{es.admin.badges.request}</span>}
           {movement.editCount > 0 && <span className="tag">{es.admin.badges.edited}</span>}
         </span>
         {isVoided && (
@@ -69,18 +71,23 @@ export function RecentMovements({ movements, employees, loading, filterEmployeeI
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [voidingId, setVoidingId] = useState(null);
   const employeeNames = new Map(employees.map((employee) => [employee.id, employee.name]));
   const columns = es.admin.recentColumns;
 
-  async function handleVoid(movementId) {
-    const reason = window.prompt(es.admin.voidPrompt);
-    if (reason === null) return;
+  function openVoid(movementId) {
+    setError(null);
+    setVoidingId(movementId);
+  }
 
+  async function handleVoid(reason) {
+    const movementId = voidingId;
     setBusyId(movementId);
     setError(null);
     try {
       await apiPost(`/api/movements/${encodeURIComponent(movementId)}/void`, { reason });
       onChanged();
+      setVoidingId(null);
     } catch (voidError) {
       setError(voidError);
     } finally {
@@ -107,7 +114,7 @@ export function RecentMovements({ movements, employees, loading, filterEmployeeI
         </select>
       </label>
 
-      <ErrorNotice error={error} />
+      <ErrorNotice error={voidingId ? null : error} />
 
       {loading && !movements.length && <TableRowsSkeleton rows={4} />}
 
@@ -117,7 +124,7 @@ export function RecentMovements({ movements, employees, loading, filterEmployeeI
 
       {movements.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table-stack w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-divider">
                 <th className="th">{columns.date}</th>
@@ -136,7 +143,7 @@ export function RecentMovements({ movements, employees, loading, filterEmployeeI
                     employeeName={employeeNames.get(movement.employeeId) ?? '?'}
                     busy={busyId === movement.id}
                     onEdit={setEditingId}
-                    onVoid={handleVoid}
+                    onVoid={openVoid}
                   />
                   {editingId === movement.id && (
                     <tr>
@@ -154,6 +161,21 @@ export function RecentMovements({ movements, employees, loading, filterEmployeeI
 
       {filterEmployeeId && movements.length >= EMPLOYEE_HISTORY_LIMIT && (
         <p className="mt-3 text-xs text-ink-soft">{interpolate(es.admin.movementsLimitHint, { count: EMPLOYEE_HISTORY_LIMIT })}</p>
+      )}
+      {voidingId && (
+        <ConfirmDialog
+          tone="danger"
+          title={es.admin.voidDialog.title}
+          message={es.admin.voidDialog.message}
+          reasonLabel={es.admin.voidDialog.reasonLabel}
+          reasonPlaceholder={es.admin.voidDialog.reasonPlaceholder}
+          confirmLabel={es.admin.voidDialog.confirm}
+          maxLength={MAX_VOID_REASON_LENGTH}
+          busy={busyId === voidingId}
+          error={error}
+          onConfirm={handleVoid}
+          onCancel={() => setVoidingId(null)}
+        />
       )}
     </Section>
   );

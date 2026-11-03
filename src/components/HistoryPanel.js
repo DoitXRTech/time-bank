@@ -13,14 +13,14 @@ function HistoryRow({ movement }) {
 
   return (
     <tr className={`border-b border-divider last:border-b-0 ${isVoided ? 'opacity-50' : ''}`}>
-      <td className="py-2.5 pr-3 align-top">{formatDate(movement.date)}</td>
-      <td className="py-2.5 pr-3 align-top">
+      <td data-label={es.history.columns.date} className="py-2.5 pr-3 align-top">{formatDate(movement.date)}</td>
+      <td data-label={es.history.columns.type} className="py-2.5 pr-3 align-top">
         <span className="tag">{es.movementType[movement.type]}</span>
       </td>
-      <td className={`num whitespace-nowrap py-2.5 pr-3 align-top font-semibold ${tone} ${isVoided ? 'line-through' : ''}`}>
+      <td data-label={es.history.columns.amount} className={`num whitespace-nowrap py-2.5 pr-3 align-top font-semibold ${tone} ${isVoided ? 'line-through' : ''}`}>
         {formatSignedAmount(movement.amount, MOVEMENT_UNITS[movement.type])}
       </td>
-      <td className="py-2.5 align-top">
+      <td data-label={es.history.columns.note} className="py-2.5 align-top">
         {movement.note}
         {movement.editCount > 0 && <span className="tag ml-2">{es.history.edited}</span>}
         {isVoided && (
@@ -55,7 +55,7 @@ export function HistoryPanel({ employee, onClose }) {
 
       {movements.length > 0 && (
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table-stack w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-divider">
                 <th className="th">{columns.date}</th>

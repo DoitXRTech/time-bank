@@ -16,6 +16,7 @@ const CONFLICT_REASON_MESSAGES = {
   PROFILE_NOT_PENDING: es.errors.profileNotPending,
   START_DATE_MISMATCH: es.errors.startDateMismatch,
   ACCRUAL_ALREADY_RUNNING: es.errors.accrualAlreadyRunning,
+  REQUEST_NOT_PENDING: es.errors.requestNotPending,
 };
 
 const FIREBASE_AUTH_MESSAGES = {
