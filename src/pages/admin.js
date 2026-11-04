@@ -9,12 +9,18 @@ import { ErrorNotice } from '../components/ErrorNotice';
 import { RequireAuth } from '../components/RequireAuth';
 import { useRequestsInbox } from '../context/RequestsInboxContext';
 import { useApiData } from '../hooks/useApiData';
+import { LIVE_REFRESH_MS } from '../lib/liveRefresh';
+
+const LIVE_OPTIONS = { refreshIntervalMs: LIVE_REFRESH_MS };
 
 function AdminView() {
   const [filterEmployeeId, setFilterEmployeeId] = useState('');
   const requestsInbox = useRequestsInbox();
-  const employeesResource = useApiData('/api/employees');
-  const movementsResource = useApiData(movementsUrl(filterEmployeeId));
+  // Balances and the team's latest movements move while the page is open (a request is approved,
+  // another admin registers something). The long per-person history is not polled: it costs a
+  // read per movement every tick. The inbox refreshes inside its own provider.
+  const employeesResource = useApiData('/api/employees', LIVE_OPTIONS);
+  const movementsResource = useApiData(movementsUrl(filterEmployeeId), filterEmployeeId ? undefined : LIVE_OPTIONS);
   const pendingResource = useApiData('/api/import-profiles');
 
   const employees = employeesResource.data?.employees ?? [];

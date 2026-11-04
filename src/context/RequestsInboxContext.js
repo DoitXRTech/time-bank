@@ -1,34 +1,19 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useApiData } from '../hooks/useApiData';
+import { LIVE_REFRESH_MS } from '../lib/liveRefresh';
 import { AUTH_STATUS, useAuth } from './AuthContext';
-
-const REFRESH_INTERVAL_MS = 60_000;
 
 const RequestsInboxContext = createContext(null);
 
 /**
  * The requests waiting for a decision, for the admins: the admin page lists them and the header
- * shows how many there are. Clients never listen to Firestore, so the alert is kept fresh by
- * asking again every minute (only while the tab is visible) and when the tab comes back.
+ * shows how many there are. It refreshes on its own (see useApiData), so a request sent by a
+ * collaborator reaches the badge without reloading the page.
  */
 export function RequestsInboxProvider({ children }) {
   const { status, isAdmin } = useAuth();
   const enabled = status === AUTH_STATUS.READY && isAdmin;
-  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null);
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-
-    const reloadIfVisible = () => {
-      if (document.visibilityState === 'visible') reload();
-    };
-    const timer = window.setInterval(reloadIfVisible, REFRESH_INTERVAL_MS);
-    document.addEventListener('visibilitychange', reloadIfVisible);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', reloadIfVisible);
-    };
-  }, [enabled, reload]);
+  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null, { refreshIntervalMs: LIVE_REFRESH_MS });
 
   const value = useMemo(() => {
     const requests = data?.requests ?? [];

@@ -11,15 +11,22 @@ import { useAuth } from '../context/AuthContext';
 import es from '../content/es';
 import { employeesInView } from '../domain/balanceView';
 import { useApiData } from '../hooks/useApiData';
+import { LIVE_REFRESH_MS } from '../lib/liveRefresh';
+
+const LIVE_OPTIONS = { refreshIntervalMs: LIVE_REFRESH_MS };
 
 function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
 function BalancesView() {
-  const { data, error, loading } = useApiData('/api/employees');
+  // Balances and the answers to requests change while the page is open (an admin approves one)
+  const { data, error, loading } = useApiData('/api/employees', LIVE_OPTIONS);
   const { employee: signedInEmployee, isAdmin, previewAsMember } = useAuth();
-  const ownRequests = useApiData(signedInEmployee ? `/api/requests?employeeId=${encodeURIComponent(signedInEmployee.id)}` : null);
+  const ownRequests = useApiData(
+    signedInEmployee ? `/api/requests?employeeId=${encodeURIComponent(signedInEmployee.id)}` : null,
+    LIVE_OPTIONS,
+  );
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
