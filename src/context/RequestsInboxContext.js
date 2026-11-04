@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useApiData } from '../hooks/useApiData';
-import { LIVE_REFRESH_MS } from '../lib/liveRefresh';
+import { INBOX_REFRESH_MS } from '../lib/liveRefresh';
 import { AUTH_STATUS, useAuth } from './AuthContext';
 
 const RequestsInboxContext = createContext(null);
@@ -13,7 +13,7 @@ const RequestsInboxContext = createContext(null);
 export function RequestsInboxProvider({ children }) {
   const { status, isAdmin } = useAuth();
   const enabled = status === AUTH_STATUS.READY && isAdmin;
-  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null, { refreshIntervalMs: LIVE_REFRESH_MS });
+  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null, { refreshIntervalMs: INBOX_REFRESH_MS });
 
   const value = useMemo(() => {
     const requests = data?.requests ?? [];

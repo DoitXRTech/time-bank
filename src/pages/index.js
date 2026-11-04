@@ -10,10 +10,16 @@ import { BalanceCardSkeleton } from '../components/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import es from '../content/es';
 import { employeesInView } from '../domain/balanceView';
+import { useRequestsInbox } from '../context/RequestsInboxContext';
 import { useApiData } from '../hooks/useApiData';
-import { LIVE_REFRESH_MS } from '../lib/liveRefresh';
+import { useOnChange } from '../hooks/useOnChange';
+import { LIVE_REFRESH_MS, OWN_REQUESTS_REFRESH_MS } from '../lib/liveRefresh';
 
 const LIVE_OPTIONS = { refreshIntervalMs: LIVE_REFRESH_MS };
+const OWN_REQUESTS_OPTIONS = { refreshIntervalMs: OWN_REQUESTS_REFRESH_MS };
+
+/** One string that changes when any request changes status (or one is added) */
+const requestStatuses = (requests) => requests.map((request) => `${request.id}:${request.status}`).join(',');
 
 function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -21,12 +27,22 @@ function normalize(text) {
 
 function BalancesView() {
   // Balances and the answers to requests change while the page is open (an admin approves one)
-  const { data, error, loading } = useApiData('/api/employees', LIVE_OPTIONS);
+  const { data, error, loading, reload: reloadEmployees } = useApiData('/api/employees', LIVE_OPTIONS);
   const { employee: signedInEmployee, isAdmin, previewAsMember } = useAuth();
+  const inbox = useRequestsInbox();
   const ownRequests = useApiData(
     signedInEmployee ? `/api/requests?employeeId=${encodeURIComponent(signedInEmployee.id)}` : null,
-    LIVE_OPTIONS,
+    OWN_REQUESTS_OPTIONS,
   );
+
+  // An approval is what moves a balance: when an answer arrives, the balances come right after it
+  useOnChange(ownRequests.data ? requestStatuses(ownRequests.data.requests) : null, reloadEmployees);
+
+  // An admin who files a request in this same session sees their own inbox grow at once
+  function handleRequestSent() {
+    ownRequests.reload();
+    inbox.reload();
+  }
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
@@ -83,7 +99,7 @@ function BalancesView() {
         <HistoryPanel key={selectedEmployee.id} employee={selectedEmployee} onClose={() => setSelectedId('')} />
       )}
 
-      <RequestForm onSent={ownRequests.reload} />
+      <RequestForm onSent={handleRequestSent} />
       <MyRequests
         requests={ownRequests.data?.requests ?? []}
         loading={ownRequests.loading}

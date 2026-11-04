@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
 import es, { interpolate } from '../content/es';
 import { balanceTone } from '../domain/balances';
 import { formatDate, formatSignedAmount } from '../domain/format';
 import { MOVEMENT_UNITS } from '../domain/movementTypes';
 import { useApiData } from '../hooks/useApiData';
+import { useOnChange } from '../hooks/useOnChange';
 import { ErrorNotice } from './ErrorNotice';
 import { TableRowsSkeleton } from './Skeleton';
 import { TONE_CLASSES } from './toneClasses';
@@ -37,13 +37,7 @@ export function HistoryPanel({ employee, onClose }) {
 
   // The history is not polled (it costs a read per movement). The balances are, and a new or
   // voided movement always moves one, so a change in them is the signal to load the history again.
-  const balancesKey = JSON.stringify(employee.balances);
-  const shownBalancesKey = useRef(balancesKey);
-  useEffect(() => {
-    if (shownBalancesKey.current === balancesKey) return;
-    shownBalancesKey.current = balancesKey;
-    reload();
-  }, [balancesKey, reload]);
+  useOnChange(JSON.stringify(employee.balances), reload);
 
   const movements = data?.movements ?? [];
   const columns = es.history.columns;

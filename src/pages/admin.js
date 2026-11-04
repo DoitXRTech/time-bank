@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ImportPanel } from '../components/admin/ImportPanel';
 import { MovementForm } from '../components/admin/MovementForm';
 import { PendingProfiles } from '../components/admin/PendingProfiles';
@@ -16,6 +16,11 @@ const LIVE_OPTIONS = { refreshIntervalMs: LIVE_REFRESH_MS };
 function AdminView() {
   const [filterEmployeeId, setFilterEmployeeId] = useState('');
   const requestsInbox = useRequestsInbox();
+  // The inbox lives above the pages and was last loaded whenever it last ticked: entering this page asks for it fresh
+  const reloadInbox = requestsInbox.reload;
+  useEffect(() => {
+    reloadInbox();
+  }, [reloadInbox]);
   // Balances and the team's latest movements move while the page is open (a request is approved,
   // another admin registers something). The long per-person history is not polled: it costs a
   // read per movement every tick. The inbox refreshes inside its own provider.
