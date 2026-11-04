@@ -3,7 +3,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { ErrorNotice } from '../ErrorNotice';
 import { Section } from '../Section';
 import { TableRowsSkeleton } from '../Skeleton';
-import { requestSummary } from './requestSummary';
+import { requestLabel, requestSummary } from './requestSummary';
 import es, { interpolate } from '../../content/es';
 import { formatDate } from '../../domain/format';
 import { REQUEST_STATUSES } from '../../domain/requestTypes';
@@ -22,7 +22,7 @@ function MyRequestRow({ request, busy, onCancel }) {
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-divider py-4 first:pt-0 last:border-b-0 last:pb-0">
       <div className="min-w-0">
         <p className="font-medium">
-          {es.movementType[request.kind]} · {requestSummary(request)}
+          {requestLabel(request)} · {requestSummary(request)}
           <span className={`tag ml-2 ${STATUS_TONES[request.status] ?? ''}`}>{labels.statuses[request.status]}</span>
         </p>
         {request.note && <p className="text-xs text-ink-soft">{request.note}</p>}

@@ -63,6 +63,19 @@ describe('createRequest', () => {
     expect(request.status).toBe('pending');
   });
 
+  it('files a redeem for the day it is taken, with the action it will have when approved', async () => {
+    const request = await createRequest(ana, { kind: 'holiday', action: 'redeem', date: '2026-11-20', amount: 1 });
+
+    expect(request).toMatchObject({ kind: 'holiday', action: 'redeem', status: 'pending', amount: 1, date: '2026-11-20', period: null });
+    expect(stored(`requests/${request.id}`).action).toBe('redeem');
+    expect(stored('employees/e1').balances).toEqual({ overtime: 10, vacation: 5 });
+  });
+
+  it('refuses to report days: only worked hours can be reported', async () => {
+    await expect(createRequest(ana, { kind: 'vacation', action: 'report', month: '2026-10', amount: 2 })).rejects.toBeInstanceOf(ValidationError);
+    expect(mockFake.count('requests')).toBe(0);
+  });
+
   it('rejects invalid input before writing anything', async () => {
     await expect(createRequest(ana, { ...overtime, month: '2026-11' })).rejects.toBeInstanceOf(ValidationError);
     await expect(createRequest(ana, { ...overtime, amount: -1 })).rejects.toBeInstanceOf(ValidationError);
@@ -98,6 +111,37 @@ describe('approveRequest', () => {
 
     expect(stored('movements/request-r2')).toMatchObject({ type: 'vacation', amount: -3, date: '2026-11-17' });
     expect(stored('employees/e1').balances.vacation).toBe(2);
+  });
+
+  it('registers redeeming overtime hours as hours taken (negative) on the chosen day', async () => {
+    seedRequest('r4', { action: 'redeem', amount: 4, date: '2026-11-20', period: null, note: 'Trámite' });
+
+    await approveRequest(admin, 'r4');
+
+    expect(stored('movements/request-r4')).toMatchObject({ type: 'overtime', amount: -4, date: '2026-11-20', note: 'Trámite', source: 'request' });
+    expect(stored('employees/e1').balances.overtime).toBe(6);
+  });
+
+  it.each([
+    ['holiday', 'Feriado por canjear'],
+    ['birthday', 'Día de cumpleaños'],
+  ])('registers redeeming the %s as one day taken, out of that balance only', async (kind) => {
+    mockFake.docs.set('employees/e1', { name: 'Ana', active: true, balances: { overtime: 10, vacation: 5, holiday: 2, birthday: 1 } });
+    seedRequest('r5', { kind, action: 'redeem', amount: 1, date: '2026-11-20', period: null });
+
+    await approveRequest(admin, 'r5');
+
+    expect(stored('movements/request-r5')).toMatchObject({ type: kind, amount: -1, date: '2026-11-20' });
+    expect(stored('employees/e1').balances).toEqual({ overtime: 10, vacation: 5, holiday: kind === 'holiday' ? 1 : 2, birthday: kind === 'birthday' ? 0 : 1 });
+  });
+
+  it('lets a redeem go below zero (days are sometimes taken in advance): the admin decides, it is only flagged on screen', async () => {
+    mockFake.docs.set('employees/e1', { name: 'Ana', active: true, balances: { holiday: 0 } });
+    seedRequest('r6', { kind: 'holiday', action: 'redeem', amount: 1, date: '2026-11-20', period: null });
+
+    await approveRequest(admin, 'r6');
+
+    expect(stored('employees/e1').balances.holiday).toBe(-1);
   });
 
   it('cannot be approved twice: the hours are never counted two times', async () => {
@@ -199,6 +243,17 @@ describe('listing', () => {
     const pending = await listPendingRequests();
 
     expect(pending.map((request) => request.id).sort()).toEqual(['r1', 'r3']);
+  });
+
+  it('requests stored before redeeming existed come out with the action they always had', async () => {
+    seedRequest('old-report');
+    seedRequest('old-vacation', { kind: 'vacation', date: '2026-11-17', period: null });
+
+    const own = await listEmployeeRequests('e1');
+    const actionOf = (id) => own.find((request) => request.id === id).action;
+
+    expect(actionOf('old-report')).toBe('report');
+    expect(actionOf('old-vacation')).toBe('redeem');
   });
 
   it('one person only gets their own requests, in any status', async () => {

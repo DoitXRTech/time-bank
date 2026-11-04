@@ -19,6 +19,7 @@ describe('validateRequestInput: overtime of a finished month', () => {
   it('dates the request on the last day of the reported month and trims the note', () => {
     expect(validateRequestInput(overtime, TODAY)).toEqual({
       kind: 'overtime',
+      action: 'report',
       amount: 5.5,
       date: '2026-10-31',
       period: '2026-10',
@@ -50,7 +51,14 @@ describe('validateRequestInput: vacation days', () => {
   const vacation = { kind: 'vacation', date: '2026-11-17', amount: 3 };
 
   it('keeps the first day as the date and has no period', () => {
-    expect(validateRequestInput(vacation, TODAY)).toEqual({ kind: 'vacation', amount: 3, date: '2026-11-17', period: null, note: '' });
+    expect(validateRequestInput(vacation, TODAY)).toEqual({
+      kind: 'vacation',
+      action: 'redeem',
+      amount: 3,
+      date: '2026-11-17',
+      period: null,
+      note: '',
+    });
   });
 
   it('allows a first day in the past (days already taken but never reported)', () => {
@@ -65,8 +73,8 @@ describe('validateRequestInput: vacation days', () => {
 describe('validateRequestInput: what both kinds share', () => {
   const vacation = { kind: 'vacation', date: '2026-11-17', amount: 1 };
 
-  it('rejects an unknown kind: only overtime and vacation can be requested (a holiday cannot)', () => {
-    expect(reasonOf(() => validateRequestInput({ ...vacation, kind: 'holiday' }, TODAY))).toBe('kind:INVALID_TYPE');
+  it('rejects an unknown kind', () => {
+    expect(reasonOf(() => validateRequestInput({ ...vacation, kind: 'sabbatical' }, TODAY))).toBe('kind:INVALID_TYPE');
     expect(reasonOf(() => validateRequestInput({ ...vacation, kind: undefined }, TODAY))).toBe('kind:INVALID_TYPE');
   });
 
@@ -90,6 +98,51 @@ describe('validateRequestInput: what both kinds share', () => {
   });
 });
 
+describe('validateRequestInput: redeeming a balance on a day', () => {
+  it.each([
+    ['overtime', 4],
+    ['vacation', 2],
+    ['holiday', 1],
+    ['birthday', 1],
+  ])('accepts redeeming %s on a specific day', (kind, amount) => {
+    expect(validateRequestInput({ kind, action: 'redeem', date: '2026-11-20', amount, note: ' Puente ' }, TODAY)).toEqual({
+      kind,
+      action: 'redeem',
+      amount,
+      date: '2026-11-20',
+      period: null,
+      note: 'Puente',
+    });
+  });
+
+  it('a redeem needs the day it is taken, not a month', () => {
+    const redeem = { kind: 'holiday', action: 'redeem', amount: 1 };
+    expect(reasonOf(() => validateRequestInput({ ...redeem, month: '2026-10' }, TODAY))).toBe('date:INVALID_DATE');
+    expect(reasonOf(() => validateRequestInput({ ...redeem, date: '2026-02-30' }, TODAY))).toBe('date:INVALID_DATE');
+  });
+
+  it('overtime can be redeemed as well as reported: the action decides what the fields mean', () => {
+    const report = validateRequestInput({ kind: 'overtime', action: 'report', month: '2026-10', amount: 3 }, TODAY);
+    const redeem = validateRequestInput({ kind: 'overtime', action: 'redeem', date: '2026-11-20', amount: 3 }, TODAY);
+
+    expect(report).toMatchObject({ action: 'report', date: '2026-10-31', period: '2026-10' });
+    expect(redeem).toMatchObject({ action: 'redeem', date: '2026-11-20', period: null });
+  });
+
+  it.each(['vacation', 'holiday', 'birthday'])('only worked hours can be reported: %s cannot', (kind) => {
+    expect(reasonOf(() => validateRequestInput({ kind, action: 'report', month: '2026-10', amount: 1 }, TODAY))).toBe('action:INVALID_TYPE');
+  });
+
+  it('rejects an unknown action', () => {
+    expect(reasonOf(() => validateRequestInput({ kind: 'overtime', action: 'donate', date: '2026-11-20', amount: 1 }, TODAY))).toBe('action:INVALID_TYPE');
+  });
+
+  it('a request without an action means what it always meant (an older client): overtime is a report, the rest a day taken', () => {
+    expect(validateRequestInput({ kind: 'overtime', month: '2026-10', amount: 2 }, TODAY).action).toBe('report');
+    expect(validateRequestInput({ kind: 'vacation', date: '2026-11-17', amount: 2 }, TODAY).action).toBe('redeem');
+  });
+});
+
 describe('validateDecisionReason', () => {
   it('trims the reason and requires one', () => {
     expect(validateDecisionReason('  Ya hay dos personas de vacaciones ')).toBe('Ya hay dos personas de vacaciones');
@@ -105,8 +158,8 @@ describe('validateDecisionReason', () => {
 describe('movementFromRequest', () => {
   const base = { employeeId: 'e1', amount: 4, date: '2026-10-31', note: 'Cierre' };
 
-  it('an approved overtime adds the hours to the bank', () => {
-    expect(movementFromRequest({ ...base, kind: 'overtime' })).toEqual({
+  it('an approved report adds the hours to the bank', () => {
+    expect(movementFromRequest({ ...base, kind: 'overtime', action: 'report' })).toEqual({
       employeeId: 'e1',
       type: 'overtime',
       amount: 4,
@@ -116,6 +169,25 @@ describe('movementFromRequest', () => {
   });
 
   it('an approved vacation takes the days out of the balance', () => {
-    expect(movementFromRequest({ ...base, kind: 'vacation', date: '2026-11-17' })).toMatchObject({ type: 'vacation', amount: -4, date: '2026-11-17' });
+    expect(movementFromRequest({ ...base, kind: 'vacation', action: 'redeem', date: '2026-11-17' })).toMatchObject({ type: 'vacation', amount: -4, date: '2026-11-17' });
+  });
+
+  it.each([
+    ['overtime', 'horas'],
+    ['holiday', 'feriado'],
+    ['birthday', 'cumpleaños'],
+  ])('an approved redeem of %s subtracts it from that balance, on the day it is taken', (kind) => {
+    expect(movementFromRequest({ ...base, kind, action: 'redeem', amount: 1, date: '2026-11-20' })).toEqual({
+      employeeId: 'e1',
+      type: kind,
+      amount: -1,
+      date: '2026-11-20',
+      note: 'Cierre',
+    });
+  });
+
+  it('a request stored before redeeming existed still becomes the movement it always was', () => {
+    expect(movementFromRequest({ ...base, kind: 'overtime' }).amount).toBe(4);
+    expect(movementFromRequest({ ...base, kind: 'vacation' }).amount).toBe(-4);
   });
 });

@@ -104,34 +104,63 @@ const es = {
     edited: 'Editado',
   },
   requests: {
-    formTitle: 'Reportar horas o pedir vacaciones',
+    formTitle: 'Reportar horas o pedir días libres',
     formDescription:
-      'Lo que antes se enviaba por correo llega ahora directo a los administradores. Enviar una solicitud no cambia su saldo: cuando la aprueben se registra en su historial.',
+      'Lo que antes se enviaba por correo llega ahora directo a los administradores. Enviar una solicitud no cambia su saldo: cuando la aprueben se registra en su historial, y si es un canje se resta de lo que corresponda.',
     fields: {
-      kind: 'Qué quiere enviar',
+      option: 'Qué quiere enviar',
       month: 'Mes trabajado',
-      hours: 'Horas extra',
-      startDate: 'Primer día de vacaciones',
-      days: 'Días',
       note: 'Nota',
     },
-    kinds: { overtime: 'Horas extra de un mes', vacation: 'Vacaciones' },
-    hints: {
-      overtime: 'Solo meses que ya terminaron. Use múltiplos de 0.25 (por ejemplo 2.5).',
-      vacation: 'Cuente los días que va a tomar, en múltiplos de 0.25 (medio día es 0.5).',
+    // One entry per thing that can be asked for (REQUEST_OPTIONS): its label, the date and amount
+    // fields it needs, a hint and the example in the note
+    options: {
+      'overtime-report': {
+        label: 'Reportar horas extra de un mes',
+        amountLabel: 'Horas extra trabajadas',
+        hint: 'Solo meses que ya terminaron. Use múltiplos de 0.25 (por ejemplo 2.5).',
+        notePlaceholder: 'ej. Cierre de campaña, evento del 18',
+      },
+      'overtime-redeem': {
+        label: 'Canjear horas extra',
+        dateLabel: 'Día que se toma',
+        amountLabel: 'Horas a canjear',
+        hint: 'Se restan de su saldo de horas extra cuando la aprueben. Use múltiplos de 0.25.',
+        notePlaceholder: 'ej. Salida temprana, trámite personal',
+      },
+      vacation: {
+        label: 'Pedir vacaciones',
+        dateLabel: 'Primer día de vacaciones',
+        amountLabel: 'Días',
+        hint: 'Cuente los días que va a tomar, en múltiplos de 0.5 (medio día es 0.5).',
+        notePlaceholder: 'ej. Viaje familiar',
+      },
+      holiday: {
+        label: 'Canjear un feriado',
+        dateLabel: 'Día en que lo canjea',
+        amountLabel: 'Días',
+        hint: 'Elija el día libre en que canjea un feriado que le deben. Se resta de sus feriados por canjear.',
+        notePlaceholder: 'ej. Feriado trabajado del 31/08',
+      },
+      birthday: {
+        label: 'Canjear el día de cumpleaños',
+        dateLabel: 'Día que se toma',
+        amountLabel: 'Días',
+        hint: 'Elija el día en que toma su día de cumpleaños. Se resta de ese beneficio.',
+        notePlaceholder: 'ej. El viernes después de mi cumpleaños',
+      },
     },
-    notePlaceholder: {
-      overtime: 'ej. Cierre de campaña, evento del 18',
-      vacation: 'ej. Viaje familiar',
-    },
+    balanceNow: 'Su saldo actual: {balance}',
     submit: 'Enviar solicitud',
     sending: 'Enviando…',
     sent: 'Solicitud enviada. Los administradores ya la ven.',
     mineTitle: 'Mis solicitudes',
     mineEmpty: 'Todavía no ha enviado solicitudes.',
+    // What a request asks for in one line: a report is about a month, a redeem about a day
     summary: {
-      overtime: '{amount} de {month}',
-      vacation: '{amount} desde el {date}',
+      report: '{amount} de {month}',
+      redeem: '{amount} el {date}',
+      redeemFrom: '{amount} desde el {date}',
     },
     statuses: { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada', cancelled: 'Cancelada' },
     rejectedBecause: 'Motivo: {reason}',

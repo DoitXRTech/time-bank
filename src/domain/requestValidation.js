@@ -2,7 +2,14 @@ import { ValidationError } from '../../lib/errors';
 import { isValidIsoDate, isValidIsoMonth, lastDayOfMonth } from './isoDate';
 import { MAX_NOTE_LENGTH } from './movementTypes';
 import { validateAmount, validateMovementInput } from './movementValidation';
-import { MAX_DECISION_NOTE_LENGTH, REQUEST_KIND_LIST, REQUEST_KINDS } from './requestTypes';
+import {
+  allowedActions,
+  defaultAction,
+  MAX_DECISION_NOTE_LENGTH,
+  REQUEST_ACTIONS,
+  REQUEST_KIND_LIST,
+  requestAction,
+} from './requestTypes';
 
 // `reason` is a stable code the UI maps to a Spanish message; `message` stays in English for logs
 function fail(field, reason, message) {
@@ -22,7 +29,16 @@ function validateKind(kind) {
   return kind;
 }
 
-// A request always asks for something: the sign of the movement is decided by its kind, not by the person
+// A client from before redeeming existed sends no action: it means what it always meant
+function validateAction(kind, rawAction) {
+  const action = rawAction ?? defaultAction(kind);
+  if (!allowedActions(kind).includes(action)) {
+    fail('action', 'INVALID_TYPE', `action must be one of: ${allowedActions(kind).join(', ')}`);
+  }
+  return action;
+}
+
+// A request always asks for something: the sign of the movement comes from its action, not from the person
 function validateRequestedAmount(rawAmount) {
   const amount = validateAmount(rawAmount);
   if (amount < 0) fail('amount', 'AMOUNT_NOT_POSITIVE', 'amount must be greater than zero');
@@ -36,31 +52,34 @@ function validateReportedMonth(month, today) {
   return month;
 }
 
-function validateStartDate(date) {
+function validateDay(date) {
   if (!isValidIsoDate(date)) fail('date', 'INVALID_DATE', 'date must be a valid YYYY-MM-DD date');
   return date;
 }
 
 /**
- * Validates and normalizes what a collaborator sends: either the overtime hours of a finished
- * month (`{ kind: 'overtime', month: 'YYYY-MM', amount }`) or vacation days starting on a date
- * (`{ kind: 'vacation', date: 'YYYY-MM-DD', amount }`).
+ * Validates and normalizes what a collaborator sends. Two shapes:
+ * - report the overtime of a finished month: `{ kind: 'overtime', action: 'report', month: 'YYYY-MM', amount }`
+ * - redeem a balance on a day (overtime hours, vacation, a holiday owed, the birthday):
+ *   `{ kind, action: 'redeem', date: 'YYYY-MM-DD', amount }`
  * @param {object} input
  * @param {string} today YYYY-MM-DD in the company time zone
- * @returns {{ kind: string, amount: number, date: string, period: string|null, note: string }}
- *   `date` is the day the movement will carry: the last day of the month for overtime, the first day for vacation.
+ * @returns {{ kind: string, action: string, amount: number, date: string, period: string|null, note: string }}
+ *   `date` is the day the movement will carry: the last day of the month for a report, the day taken (the
+ *   first one, for vacation) for a redeem.
  * @throws {ValidationError} with metadata `{ field, reason }`
  */
 export function validateRequestInput(input, today) {
   const kind = validateKind(input?.kind);
+  const action = validateAction(kind, input?.action);
   const amount = validateRequestedAmount(input?.amount);
   const note = normalizeText(input?.note, 'note', MAX_NOTE_LENGTH);
 
-  if (kind === REQUEST_KINDS.OVERTIME) {
+  if (action === REQUEST_ACTIONS.REPORT) {
     const period = validateReportedMonth(input?.month, today);
-    return { kind, amount, date: lastDayOfMonth(period), period, note };
+    return { kind, action, amount, date: lastDayOfMonth(period), period, note };
   }
-  return { kind, amount, date: validateStartDate(input?.date), period: null, note };
+  return { kind, action, amount, date: validateDay(input?.date), period: null, note };
 }
 
 /** Why a request was turned down; the collaborator reads it, so it is required */
@@ -71,11 +90,11 @@ export function validateDecisionReason(reason) {
 }
 
 /**
- * The movement an approved request becomes: overtime adds hours to the bank, vacation takes days out.
- * Goes through the same validation as a movement typed by an admin.
+ * The movement an approved request becomes: a report adds hours to the bank, a redeem takes the
+ * amount out of the balance it is about. Goes through the same validation as a movement typed by an admin.
  */
 export function movementFromRequest(request) {
-  const sign = request.kind === REQUEST_KINDS.VACATION ? -1 : 1;
+  const sign = requestAction(request) === REQUEST_ACTIONS.REPORT ? 1 : -1;
   return validateMovementInput({
     employeeId: request.employeeId,
     type: request.kind,

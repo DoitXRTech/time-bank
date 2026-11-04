@@ -1,18 +1,21 @@
 import { useState } from 'react';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { ErrorNotice } from '../ErrorNotice';
-import { requestSummary } from '../requests/requestSummary';
+import { requestLabel, requestSummary } from '../requests/requestSummary';
 import { Section } from '../Section';
 import { TableRowsSkeleton } from '../Skeleton';
 import es, { interpolate } from '../../content/es';
 import { formatDate, formatSignedAmount } from '../../domain/format';
 import { MOVEMENT_UNITS } from '../../domain/movementTypes';
-import { MAX_DECISION_NOTE_LENGTH, REQUEST_KINDS } from '../../domain/requestTypes';
+import { MAX_DECISION_NOTE_LENGTH, REQUEST_ACTIONS, requestAction } from '../../domain/requestTypes';
 import { apiPost } from '../../lib/apiClient';
 
-/** A vacation that asks for more days than the person has still gets decided by a human, but is flagged */
-function exceedsVacationBalance(request, employee) {
-  return request.kind === REQUEST_KINDS.VACATION && Boolean(employee) && request.amount > employee.balances.vacation;
+/**
+ * A redeem that asks for more than the person has (hours, vacation, a holiday owed, the birthday)
+ * still gets decided by a human (days are sometimes taken in advance), but is flagged.
+ */
+function exceedsBalance(request, employee) {
+  return requestAction(request) === REQUEST_ACTIONS.REDEEM && Boolean(employee) && request.amount > employee.balances[request.kind];
 }
 
 function RequestRow({ request, employee, busy, onApprove, onReject }) {
@@ -25,9 +28,9 @@ function RequestRow({ request, employee, busy, onApprove, onReject }) {
         <span className="block text-xs text-ink-soft">{formatDate(request.createdAt.slice(0, 10))}</span>
       </td>
       <td data-label={labels.columns.request} className="py-2.5 pr-3 align-top">
-        <span className="tag">{es.movementType[request.kind]}</span>
+        <span className="tag">{requestLabel(request)}</span>
         <span className="mt-1 block font-semibold">{requestSummary(request)}</span>
-        {exceedsVacationBalance(request, employee) && <span className="tag mt-1 text-danger-text">{labels.exceedsBalance}</span>}
+        {exceedsBalance(request, employee) &&<span className="tag mt-1 text-danger-text">{labels.exceedsBalance}</span>}
       </td>
       <td data-label={labels.columns.balance} className="num whitespace-nowrap py-2.5 pr-3 align-top">
         {employee ? formatSignedAmount(employee.balances[request.kind], MOVEMENT_UNITS[request.kind]) : '—'}

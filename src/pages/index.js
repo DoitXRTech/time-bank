@@ -38,6 +38,9 @@ function BalancesView() {
   // An approval is what moves a balance: when an answer arrives, the balances come right after it
   useOnChange(ownRequests.data ? requestStatuses(ownRequests.data.requests) : null, reloadEmployees);
 
+  // What the person has, shown in the form before they redeem something
+  const ownBalances = data?.employees.find((employee) => employee.id === signedInEmployee?.id)?.balances;
+
   // An admin who files a request in this same session sees their own inbox grow at once
   function handleRequestSent() {
     ownRequests.reload();
@@ -99,7 +102,7 @@ function BalancesView() {
         <HistoryPanel key={selectedEmployee.id} employee={selectedEmployee} onClose={() => setSelectedId('')} />
       )}
 
-      <RequestForm onSent={handleRequestSent} />
+      <RequestForm onSent={handleRequestSent} balances={ownBalances} />
       <MyRequests
         requests={ownRequests.data?.requests ?? []}
         loading={ownRequests.loading}
