@@ -46,7 +46,9 @@ function EmployeeMovementForm({ employees, onSaved }) {
       <div className="form-grid-4">
         <label className="field-label">
           {es.admin.fields.employee}
-          <select name="employeeId" className="field-input" required>
+          {/* Starts empty, and goes back to empty after every movement: the person is chosen each time on purpose */}
+          <select name="employeeId" className="field-input" defaultValue="" required>
+            <option value="">{es.admin.fields.employeePlaceholder}</option>
             {activeEmployees.map((employee) => (
               <option key={employee.id} value={employee.id}>
                 {employee.name}

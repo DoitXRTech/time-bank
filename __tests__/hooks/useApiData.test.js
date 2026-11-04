@@ -4,7 +4,7 @@ import { useApiData } from '@/hooks/useApiData';
 import { apiGet } from '@/lib/apiClient';
 import { captureClientException } from '@/lib/clientMonitoring';
 
-jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn() }));
+jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn(), isAccessLostError: () => false }));
 jest.mock('@/lib/clientMonitoring', () => ({ captureClientException: jest.fn() }));
 
 const INTERVAL = 30_000;

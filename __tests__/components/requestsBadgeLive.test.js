@@ -9,12 +9,14 @@ let mockAuth;
 
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: '/admin', replace: jest.fn() }) }));
 jest.mock('next/image', () => ({ __esModule: true, default: ({ alt }) => require('react').createElement('img', { alt }) }));
+// Renders the title where the test can read it (the real one writes it into the document head)
+jest.mock('next/head', () => ({ __esModule: true, default: ({ children }) => children }));
 jest.mock('@/context/ThemeContext', () => ({ useTheme: () => ({ theme: 'light', changeTheme: jest.fn() }) }));
 jest.mock('@/context/AuthContext', () => ({
   AUTH_STATUS: { LOADING: 'loading', SIGNED_OUT: 'signed-out', READY: 'ready' },
   useAuth: () => mockAuth,
 }));
-jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn() }));
+jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn(), isAccessLostError: () => false }));
 jest.mock('@/lib/clientMonitoring', () => ({ captureClientException: jest.fn() }));
 
 const admin = { id: 'a1', name: 'Ana Admin', role: 'admin' };
@@ -75,6 +77,35 @@ describe('the admin badge follows the inbox on its own', () => {
     await act(async () => jest.advanceTimersByTime(60_000));
 
     expect(adminTabText()).toContain('2 solicitudes pendientes');
+  });
+
+  it('puts the count in the tab title too, so it is seen from another tab or window', async () => {
+    signIn();
+    apiGet.mockResolvedValueOnce({ requests: [] });
+    render(tree());
+    await flush();
+    expect(document.querySelector('title').textContent).toBe('Banco de Horas');
+
+    apiGet.mockResolvedValue({ requests: [request('r1'), request('r2')] });
+    await act(async () => jest.advanceTimersByTime(INBOX_REFRESH_MS));
+
+    expect(document.querySelector('title').textContent).toBe('(2) Banco de Horas');
+  });
+
+  it('keeps counting on a hidden tab, only more slowly', async () => {
+    signIn();
+    apiGet.mockResolvedValueOnce({ requests: [] });
+    render(tree());
+    await flush();
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+
+    apiGet.mockResolvedValue({ requests: [request('r1')] });
+    await act(async () => jest.advanceTimersByTime(70_000));
+
+    expect(document.querySelector('title').textContent).toBe('(1) Banco de Horas');
+    // Far fewer calls than one every 10 seconds
+    expect(apiGet.mock.calls.length).toBeLessThanOrEqual(3);
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
   });
 
   it('after leaving "ver como colaborador" it loads the inbox right away', async () => {

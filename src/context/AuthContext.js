@@ -1,10 +1,12 @@
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { apiGet } from '../lib/apiClient';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { usePolling } from '../hooks/usePolling';
+import { apiGet, isAccessLostError, onAccessLost } from '../lib/apiClient';
 import { ROLES } from '../domain/movementTypes';
 import { captureClientException } from '../lib/clientMonitoring';
 import { getErrorMessage } from '../lib/errorMessages';
 import { getFirebaseAuth, isFirebaseConfigured } from '../lib/firebase';
+import { SESSION_SYNC_MS } from '../lib/liveRefresh';
 
 const AuthContext = createContext(null);
 
@@ -17,10 +19,20 @@ export const AUTH_STATUS = Object.freeze({
   READY: 'ready',
 });
 
+/** Same record, so nothing that depends on the signed-in employee has to redraw */
+const isSameEmployee = (previous, next) => JSON.stringify(previous) === JSON.stringify(next);
+
 /**
  * A Google account only counts as signed in once the server confirms it maps to an active
  * employee of an allowed domain (GET /api/me). Otherwise the Firebase session is dropped
  * and the reason is kept to show on the login screen.
+ *
+ * While signed in it keeps itself in step with the server, without anyone reloading:
+ * - `accessLostReason`: set the moment any API answer says the account was deactivated (or its
+ *   email removed), wherever the call came from. Pages show a block screen instead of their
+ *   content, and it clears by itself if the access comes back.
+ * - the signed-in `employee` is refreshed every `SESSION_SYNC_MS`, so a role change (admin <-> collaborator)
+ *   or a corrected name reaches the open page.
  */
 export function AuthProvider({ children }) {
   const [status, setStatus] = useState(AUTH_STATUS.LOADING);
@@ -29,6 +41,11 @@ export function AuthProvider({ children }) {
   const [signedInEmail, setSignedInEmail] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [previewAsMember, setPreviewAsMemberState] = useState(false);
+  const [accessLostReason, setAccessLostReason] = useState(null);
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  });
 
   const setPreviewAsMember = useCallback((enabled) => {
     setPreviewAsMemberState(enabled);
@@ -49,6 +66,32 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // The API client tells us when an answer means "no access any more" (even a refresh nobody watches).
+  // Ignored while signing in: that path already shows its own error on the login screen.
+  useEffect(
+    () =>
+      onAccessLost((reason) => {
+        if (statusRef.current === AUTH_STATUS.READY) setAccessLostReason(reason);
+      }),
+    [],
+  );
+
+  usePolling(
+    async ({ isActive }) => {
+      try {
+        const { employee: fresh } = await apiGet('/api/me');
+        if (!isActive()) return;
+        // Answering again means the access is there (it may have been given back)
+        setAccessLostReason(null);
+        setEmployee((previous) => (isSameEmployee(previous, fresh) ? previous : fresh));
+      } catch (error) {
+        // A revoked account is reported by the API client itself; anything else is only logged
+        if (!isAccessLostError(error)) captureClientException(error, { action: 'session-sync' });
+      }
+    },
+    { intervalMs: SESSION_SYNC_MS, enabled: status === AUTH_STATUS.READY },
+  );
+
   useEffect(() => {
     if (!isFirebaseConfigured()) {
       setStatus(AUTH_STATUS.SIGNED_OUT);
@@ -59,6 +102,7 @@ export function AuthProvider({ children }) {
       if (!firebaseUser) {
         setEmployee(null);
         setSignedInEmail(null);
+        setAccessLostReason(null);
         // The preview never outlives the session
         setPreviewAsMember(false);
         setStatus(AUTH_STATUS.SIGNED_OUT);
@@ -99,8 +143,8 @@ export function AuthProvider({ children }) {
   const isAdmin = isRealAdmin && !previewAsMember;
 
   const value = useMemo(
-    () => ({ status, employee, signedInEmail, authError, signIn, signOut, isAdmin, isRealAdmin, previewAsMember, setPreviewAsMember }),
-    [status, employee, signedInEmail, authError, signIn, signOut, isAdmin, isRealAdmin, previewAsMember, setPreviewAsMember],
+    () => ({ status, employee, signedInEmail, authError, accessLostReason, signIn, signOut, isAdmin, isRealAdmin, previewAsMember, setPreviewAsMember }),
+    [status, employee, signedInEmail, authError, accessLostReason, signIn, signOut, isAdmin, isRealAdmin, previewAsMember, setPreviewAsMember],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

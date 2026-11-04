@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { MIN_REFRESH_GAP_MS } from '../lib/liveRefresh';
-import { apiGet } from '../lib/apiClient';
+import { apiGet, isAccessLostError } from '../lib/apiClient';
 import { captureClientException } from '../lib/clientMonitoring';
+import { usePolling } from './usePolling';
 
 /** Same payload, so the screen has nothing to redraw (keeps the previous reference) */
 function isSameData(previous, next) {
@@ -11,16 +11,17 @@ function isSameData(previous, next) {
 /**
  * Loads `url` with the authenticated client. Pass a falsy url to skip the request.
  *
- * With `refreshIntervalMs` the data also stays current on its own: every interval, and when the
- * tab becomes visible or the window regains focus, it is fetched again in the background. A
- * background refresh never shows the loading state, keeps what is on screen when it fails (the
- * next tick tries again) and keeps the same `data` reference when nothing changed.
+ * With `refreshIntervalMs` the data also stays current on its own (see `usePolling`): it is fetched
+ * again in the background every interval, and when the tab becomes visible or the window regains
+ * focus. A background refresh never shows the loading state, keeps what is on screen when it fails
+ * (the next tick tries again) and keeps the same `data` reference when nothing changed.
+ * `hiddenRefreshIntervalMs` makes a hidden tab refresh too, but that rarely.
  *
  * @param {string|null} url
- * @param {{ refreshIntervalMs?: number }} [options]
+ * @param {{ refreshIntervalMs?: number, hiddenRefreshIntervalMs?: number }} [options]
  * @returns {{ data: object|null, error: Error|null, loading: boolean, reload: () => void }}
  */
-export function useApiData(url, { refreshIntervalMs } = {}) {
+export function useApiData(url, { refreshIntervalMs, hiddenRefreshIntervalMs } = {}) {
   const [state, setState] = useState({ data: null, error: null, loading: Boolean(url) });
   const [reloadToken, setReloadToken] = useState(0);
   // Only the newest response may land: a slow background answer must not overwrite a newer load
@@ -49,42 +50,22 @@ export function useApiData(url, { refreshIntervalMs } = {}) {
     };
   }, [url, reloadToken]);
 
-  useEffect(() => {
-    if (!url || !refreshIntervalMs) return undefined;
-
-    let active = true;
-    let inFlight = false;
-    let lastStartedAt = 0;
-
-    async function refreshInBackground() {
-      const now = Date.now();
-      if (inFlight || document.visibilityState !== 'visible' || now - lastStartedAt < MIN_REFRESH_GAP_MS) return;
-      inFlight = true;
-      lastStartedAt = now;
+  usePolling(
+    async ({ isActive }) => {
       const requestId = ++latestRequestRef.current;
       try {
         const data = await apiGet(url);
-        if (active && latestRequestRef.current === requestId) {
+        if (isActive() && latestRequestRef.current === requestId) {
           // `loading: false` also closes a foreground load this newer answer has just replaced
           setState((previous) => (isSameData(previous.data, data) ? { ...previous, error: null, loading: false } : { data, error: null, loading: false }));
         }
       } catch (error) {
-        captureClientException(error, { action: 'background-refresh', url });
-      } finally {
-        inFlight = false;
+        // A lost account is not a failure to report: the session shows the block screen for it
+        if (!isAccessLostError(error)) captureClientException(error, { action: 'background-refresh', url });
       }
-    }
-
-    const timer = window.setInterval(refreshInBackground, refreshIntervalMs);
-    document.addEventListener('visibilitychange', refreshInBackground);
-    window.addEventListener('focus', refreshInBackground);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', refreshInBackground);
-      window.removeEventListener('focus', refreshInBackground);
-    };
-  }, [url, refreshIntervalMs]);
+    },
+    { intervalMs: refreshIntervalMs, hiddenIntervalMs: hiddenRefreshIntervalMs, enabled: Boolean(url) },
+  );
 
   const reload = useCallback(() => setReloadToken((token) => token + 1), []);
 

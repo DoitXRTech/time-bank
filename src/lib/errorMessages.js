@@ -18,6 +18,7 @@ const CONFLICT_REASON_MESSAGES = {
   ACCRUAL_ALREADY_RUNNING: es.errors.accrualAlreadyRunning,
   REQUEST_NOT_PENDING: es.errors.requestNotPending,
   NO_EMPLOYEES_IN_COUNTRY: es.errors.noEmployeesInCountry,
+  APP_OUTDATED: es.errors.appOutdated,
 };
 
 const FIREBASE_AUTH_MESSAGES = {

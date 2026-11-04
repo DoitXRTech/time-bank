@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { EmployeeManager } from '@/components/team/EmployeeManager';
 
-jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn(), apiPatch: jest.fn(), apiPost: jest.fn() }));
+jest.mock('@/lib/apiClient', () => ({ apiGet: jest.fn(), apiPatch: jest.fn(), apiPost: jest.fn(), isAccessLostError: () => false }));
 jest.mock('@/context/AuthContext', () => ({
   useAuth: () => ({ employee: { id: 'a1' }, signedInEmail: 'ana@x.com' }),
 }));

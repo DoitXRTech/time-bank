@@ -1,3 +1,4 @@
+import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
@@ -79,6 +80,10 @@ export function AppShell({ children }) {
   // every page section starts with its own 32px top margin (see Section).
   return (
     <BrandBackdrop className="flex flex-col">
+      {/* The count is in the tab title too, so it is seen from another tab or window */}
+      <Head>
+        <title>{isAdmin && pendingRequests > 0 ? interpolate(es.app.titleWithPending, { count: pendingRequests }) : es.app.title}</title>
+      </Head>
       {previewAsMember && <PreviewBanner onExit={() => setPreviewAsMember(false)} />}
       <div className="mx-auto w-full max-w-[916px] flex-1 px-4 pb-12 pt-6 sm:pb-16 md:pt-8 lg:px-0">
         <header className="animate-fade-in">

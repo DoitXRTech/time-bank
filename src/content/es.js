@@ -7,6 +7,8 @@ const es = {
     title: 'Banco de Horas',
     subtitle: 'Horas extra, vacaciones y feriados por canjear del equipo.',
     loading: 'Cargando…',
+    // Tab title while the admin has requests waiting: "(2) Banco de Horas"
+    titleWithPending: '({count}) Banco de Horas',
   },
   nav: {
     balances: 'Consultar saldo',
@@ -66,6 +68,22 @@ const es = {
       months: '{count} meses',
       lessThanMonth: 'menos de un mes',
     },
+  },
+  // Shown over everything when a newer deploy exists than the code this tab is running
+  appUpdate: {
+    title: 'Hay una versión nueva',
+    message:
+      'Se publicó una actualización del Banco de Horas. Actualice la página para seguir trabajando: así evita errores con la versión anterior.',
+    reload: 'Actualizar ahora',
+  },
+  // Shown instead of the page when the server says the signed-in person lost their access
+  accessLost: {
+    title: 'Ya no tiene acceso',
+    message: {
+      ACCOUNT_DEACTIVATED: 'Un administrador desactivó su cuenta, así que ya no puede hacer nada más en el Banco de Horas.',
+      NOT_REGISTERED: 'Su correo ya no está registrado en el Banco de Horas, así que ya no puede hacer nada más.',
+    },
+    hint: 'Si cree que es un error, hable con un administrador. Si le devuelven el acceso, esta pantalla se desbloquea sola.',
   },
   // The countries the team works from (their holidays are the country's)
   countries: { CR: 'Costa Rica', CO: 'Colombia', AR: 'Argentina', EC: 'Ecuador' },
@@ -248,6 +266,7 @@ const es = {
     },
     fields: {
       employee: 'Colaborador',
+      employeePlaceholder: 'Seleccione un colaborador',
       type: 'Tipo',
       amount: 'Cantidad',
       amountPlaceholder: 'ej. 3 o -1',
@@ -407,6 +426,7 @@ const es = {
     startDateMismatch: 'El colaborador ya tiene otra fecha de inicio de vacaciones; asociarla haría que se contradigan.',
     accrualAlreadyRunning: 'El colaborador ya acumuló días de vacaciones; asociar el saldo importado los contaría dos veces.',
     noEmployeesInCountry: 'No hay colaboradores activos con ese país.',
+    appOutdated: 'Hay una versión nueva de la aplicación. Actualice la página para continuar.',
     requestNotPending: 'Esa solicitud ya fue resuelta o cancelada.',
     popupClosed: 'Se cerró la ventana de Google antes de terminar.',
     validation: {

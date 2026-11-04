@@ -39,6 +39,40 @@ describe('withAuth', () => {
     expect(resolveSignedInEmployee).toHaveBeenCalledWith({ uid: 'uid-1', email: 'person@example.com', displayName: 'Person' });
   });
 
+  describe('a page from an older deploy', () => {
+    const originalBuildId = process.env.NEXT_PUBLIC_APP_BUILD_ID;
+    const staleChange = () => ({ ...requestWithToken(), method: 'POST', headers: { authorization: 'Bearer good-token', 'x-app-build': 'deploy-1' } });
+
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_APP_BUILD_ID = 'deploy-2';
+    });
+    afterAll(() => {
+      if (originalBuildId === undefined) delete process.env.NEXT_PUBLIC_APP_BUILD_ID;
+      else process.env.NEXT_PUBLIC_APP_BUILD_ID = originalBuildId;
+    });
+
+    it('cannot change anything: it gets a 409 asking to reload, and the handler never runs', async () => {
+      const handler = jest.fn();
+      const res = createRes();
+
+      await withAuth(handler)(staleChange(), res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'CONFLICT', metadata: { reason: 'APP_OUTDATED' } }));
+      expect(handler).not.toHaveBeenCalled();
+      expect(mockVerifyIdToken).not.toHaveBeenCalled();
+    });
+
+    it('can still read', async () => {
+      const handler = jest.fn();
+      const req = { ...staleChange(), method: 'GET' };
+
+      await withAuth(handler)(req, createRes());
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it.each([
     ['no Authorization header', {}],
     ['a header that is not a bearer token', { authorization: 'Basic abc' }],

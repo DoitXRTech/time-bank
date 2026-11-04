@@ -151,8 +151,9 @@ describe('CountryMovementForm', () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('status').textContent).toBe('Listo: 4 movimientos para 2 personas.');
-    // The dates and the note are cleared so the same batch is not sent twice by accident
+    // The dates, the note and the country are cleared so the same batch is not sent twice by accident
     expect(screen.getByText('Todavía no agregó ninguna fecha.')).toBeTruthy();
+    expect(screen.getByLabelText('País').value).toBe('');
   });
 
   it('mentions what was skipped because it was already registered, and who could not be registered', async () => {

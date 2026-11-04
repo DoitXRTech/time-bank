@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useApiData } from '../hooks/useApiData';
-import { INBOX_REFRESH_MS } from '../lib/liveRefresh';
+import { INBOX_HIDDEN_REFRESH_MS, INBOX_REFRESH_MS } from '../lib/liveRefresh';
 import { AUTH_STATUS, useAuth } from './AuthContext';
 
 const RequestsInboxContext = createContext(null);
@@ -11,9 +11,13 @@ const RequestsInboxContext = createContext(null);
  * collaborator reaches the badge without reloading the page.
  */
 export function RequestsInboxProvider({ children }) {
-  const { status, isAdmin } = useAuth();
-  const enabled = status === AUTH_STATUS.READY && isAdmin;
-  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null, { refreshIntervalMs: INBOX_REFRESH_MS });
+  const { status, isAdmin, accessLostReason } = useAuth();
+  // Not while the account is blocked: every call would be refused
+  const enabled = status === AUTH_STATUS.READY && isAdmin && !accessLostReason;
+  const { data, error, loading, reload } = useApiData(enabled ? '/api/requests' : null, {
+    refreshIntervalMs: INBOX_REFRESH_MS,
+    hiddenRefreshIntervalMs: INBOX_HIDDEN_REFRESH_MS,
+  });
 
   const value = useMemo(() => {
     const requests = data?.requests ?? [];

@@ -92,6 +92,8 @@ export function CountryMovementForm({ employees, onSaved }) {
       setConfirming(false);
       setDates([]);
       setNote('');
+      // Like the single movement form: the country is chosen again each time, on purpose
+      setCountry('');
       setStatus({ kind: result.failedEmployeeIds.length ? 'error' : 'ok', text: resultText(result) });
       onSaved();
     } catch (registerError) {

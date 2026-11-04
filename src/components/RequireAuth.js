@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { AUTH_STATUS, useAuth } from '../context/AuthContext';
 import es from '../content/es';
 import { MAIN_BRAND } from '../content/brands';
+import { AccessBlocked } from './AccessBlocked';
 import { AppShell } from './AppShell';
 import { BrandBackdrop } from './BrandBackdrop';
 import { BrandLogo } from './BrandLogo';
@@ -23,13 +24,16 @@ function SessionLoading() {
  * admin-only page go back to the balances page (the API enforces this too).
  */
 export function RequireAuth({ adminOnly = false, children }) {
-  const { status, isAdmin } = useAuth();
+  const { status, isAdmin, accessLostReason, signOut } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (status === AUTH_STATUS.SIGNED_OUT) router.replace('/login');
     else if (status === AUTH_STATUS.READY && adminOnly && !isAdmin) router.replace('/');
   }, [status, adminOnly, isAdmin, router]);
+
+  // The account lost its access while the page was open: nothing else of it can be used
+  if (status === AUTH_STATUS.READY && accessLostReason) return <AccessBlocked reason={accessLostReason} onSignOut={signOut} />;
 
   const canRender = status === AUTH_STATUS.READY && (!adminOnly || isAdmin);
   if (!canRender) return <SessionLoading />;

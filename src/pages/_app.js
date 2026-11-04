@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import { Inter } from 'next/font/google';
+import { AppUpdateNotifier } from '../components/AppUpdateNotifier';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { AuthProvider } from '../context/AuthContext';
 import { RequestsInboxProvider } from '../context/RequestsInboxContext';
@@ -26,6 +27,7 @@ export default function App({ Component, pageProps }) {
       </Head>
       <ErrorBoundary>
         <ThemeProvider>
+          <AppUpdateNotifier />
           <AuthProvider>
             <RequestsInboxProvider>
               <Component {...pageProps} />

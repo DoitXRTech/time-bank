@@ -9,6 +9,12 @@ export const LIVE_REFRESH_MS = 30_000;
 // lists are short (the pending inbox, one person's own requests), so they refresh faster
 export const INBOX_REFRESH_MS = 10_000;
 export const OWN_REQUESTS_REFRESH_MS = 15_000;
+// An admin on another tab still gets the count in the tab title, just less often (the list is short)
+export const INBOX_HIDDEN_REFRESH_MS = 60_000;
+
+// How often a visible page asks the server who the signed-in person is now, so a deactivation, a
+// removed email or a role change reaches an open page by itself
+export const SESSION_SYNC_MS = 20_000;
 
 // Minimum time between two background refreshes of the same resource, so a burst of
 // focus/visibility events (alt-tab, switching windows) does not fire one request each
