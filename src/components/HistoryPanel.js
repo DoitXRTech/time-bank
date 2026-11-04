@@ -23,6 +23,7 @@ function HistoryRow({ movement }) {
       </td>
       <td data-label={es.history.columns.note} className="py-2.5 align-top">
         {movement.note}
+        {movement.source === 'adjustment' && <span className="tag ml-2">{es.history.adjustment}</span>}
         {movement.editCount > 0 && <span className="tag ml-2">{es.history.edited}</span>}
         {isVoided && (
           <span className="block text-xs text-ink-soft">{interpolate(es.history.voidedDetail, { reason: movement.voidReason })}</span>

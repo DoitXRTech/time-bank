@@ -41,6 +41,7 @@ function MovementRow({ movement, employeeName, busy, onEdit, onVoid }) {
         <span className="ml-1 inline-flex flex-wrap gap-1 align-middle">
           {movement.source === 'import' && <span className="tag">{es.admin.badges.imported}</span>}
           {movement.source === 'request' && <span className="tag">{es.admin.badges.request}</span>}
+          {movement.source === 'adjustment' && <span className="tag">{es.admin.badges.adjustment}</span>}
           {movement.editCount > 0 && <span className="tag">{es.admin.badges.edited}</span>}
         </span>
         {isVoided && (

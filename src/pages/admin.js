@@ -60,7 +60,7 @@ function AdminView() {
         error={requestsInbox.error}
         onChanged={reloadAfterRequestDecided}
       />
-      <SummaryTable employees={employees} loading={employeesResource.loading} />
+      <SummaryTable employees={employees} loading={employeesResource.loading} onChanged={reloadAll} />
       <MovementForm employees={employees} onSaved={reloadAll} />
       <RecentMovements
         movements={movements}

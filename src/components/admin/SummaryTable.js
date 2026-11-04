@@ -1,4 +1,6 @@
-import es from '../../content/es';
+import { useState } from 'react';
+import { BalanceAdjustDialog } from './BalanceAdjustDialog';
+import es, { interpolate } from '../../content/es';
 import { balanceTone } from '../../domain/balances';
 import { formatSignedAmount } from '../../domain/format';
 import { MOVEMENT_TYPE_LIST, MOVEMENT_UNITS } from '../../domain/movementTypes';
@@ -6,7 +8,20 @@ import { Section } from '../Section';
 import { TableRowsSkeleton } from '../Skeleton';
 import { TONE_CLASSES } from '../toneClasses';
 
-export function SummaryTable({ employees, loading }) {
+/**
+ * Everyone's balances. "Ajustar" opens the dialog that forces a person's balances to what they
+ * should be, leaving a note in their history; `onChanged` reloads the data once it is saved.
+ */
+export function SummaryTable({ employees, loading, onChanged }) {
+  // Kept by id: the table refreshes on its own, and the dialog should compare with what the person has now
+  const [adjustingId, setAdjustingId] = useState(null);
+  const adjusting = employees.find((employee) => employee.id === adjustingId);
+
+  function handleSaved() {
+    setAdjustingId(null);
+    onChanged();
+  }
+
   return (
     <Section title={es.admin.summaryTitle}>
       {loading && !employees.length && <TableRowsSkeleton rows={5} />}
@@ -20,6 +35,7 @@ export function SummaryTable({ employees, loading }) {
                   {es.movementType[type]}
                 </th>
               ))}
+              <th className="th" />
             </tr>
           </thead>
           <tbody className="reveal-rows">
@@ -36,11 +52,23 @@ export function SummaryTable({ employees, loading }) {
                     {formatSignedAmount(employee.balances[type], MOVEMENT_UNITS[type])}
                   </td>
                 ))}
+                <td className="py-2.5 text-right">
+                  <button
+                    type="button"
+                    className="btn-ghost !min-h-[36px] !rounded-[6px] !px-3 !text-xs"
+                    aria-label={interpolate(es.admin.adjust.buttonLabel, { name: employee.name })}
+                    disabled={!employee.active}
+                    onClick={() => setAdjustingId(employee.id)}
+                  >
+                    {es.admin.adjust.button}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {adjusting && <BalanceAdjustDialog employee={adjusting} onSaved={handleSaved} onCancel={() => setAdjustingId(null)} />}
     </Section>
   );
 }

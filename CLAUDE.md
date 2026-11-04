@@ -87,6 +87,14 @@ Rules that must not be broken:
 
 `/team` (admin only, nav tab "Colaboradores") is the register of collaborators: search + team + status filters, one row per person with hire date (and tenure via `src/domain/tenure.js`), social security date, employment type, schedule and vacation accrual, plus emails, edit and active toggle, and the form to add someone. Pure filtering lives in `src/domain/employeeFilters.js`. These fields are HR data: only admins list everyone; a member only ever receives their own record from `GET /api/employees`. Do not add a screen that shows them to other members.
 
+### Forcing a balance ("Ajustar" in the admin summary)
+
+When the spreadsheet import (or a mistake) left a balance wrong, an admin can set it to what it should be: **Panel administrador → Resumen general → Ajustar** opens `BalanceAdjustDialog` with the four balances prefilled, a live preview of what will be registered and a **required note** ("what was done and why").
+
+- It never overwrites a balance: `adjustBalances` (`lib/services/balanceAdjustmentService.js`, `POST /api/employees/:id/balances`, admin only) writes one **`source: 'adjustment'` movement per balance that differs**, for the difference, with the note, dated today and `createdBy` the admin, plus the employee's balance change, all in one transaction. So the history shows it (tagged "Ajuste", also in the collaborator's own history) and the balance stays the sum of the movements. To undo one, void its movement as usual.
+- The differences are computed **inside the transaction against what is stored now**, so the balances end up exactly as typed even if one moved while the dialog was open; a repeated send finds nothing to change (`NO_CHANGES`) and writes nothing.
+- Rules in `src/domain/balanceAdjustment.js` (pure, tested): values are multiples of 0.25 within ±1000, only the balances sent are touched, at least one must change, the note is required (≤ 500). An inactive person cannot be adjusted. Vacation adjustments do not move the accrual counter: the daily job keeps adding +1 per completed month on top.
+
 ### Authentication and roles
 
 - Google sign-in (Firebase Auth) on the client; every API call sends the ID token (`src/lib/apiClient.js`, never raw `fetch`).

@@ -102,6 +102,7 @@ const es = {
     voided: 'Anulado',
     voidedDetail: 'Anulado: {reason}',
     edited: 'Editado',
+    adjustment: 'Ajuste',
   },
   requests: {
     formTitle: 'Reportar horas o pedir días libres',
@@ -194,6 +195,23 @@ const es = {
   admin: {
     summaryTitle: 'Resumen general',
     summaryEmployee: 'Colaborador',
+    // Forcing a balance to what it should be (e.g. when the Excel was misread); each difference
+    // is registered as an adjustment movement with the note, so the history keeps it
+    adjust: {
+      button: 'Ajustar',
+      buttonLabel: 'Ajustar saldos de {name}',
+      title: 'Ajustar saldos de {name}',
+      message:
+        'Escriba cómo deben quedar los saldos. Cada diferencia se registra como un movimiento de ajuste con su nota en el historial: no se borra nada.',
+      current: 'Ahora: {balance}',
+      noteLabel: 'Qué se hizo y por qué (queda en el historial)',
+      notePlaceholder: 'ej. El Excel contó mal las horas extra de 2025; se dejó el saldo que confirmó Rebe',
+      changesTitle: 'Se va a registrar',
+      changeLine: '{type}: {delta} (de {from} a {to})',
+      noChanges: 'Todavía no cambió ningún saldo.',
+      save: 'Guardar ajuste',
+      cancel: 'Cancelar',
+    },
     inactiveSuffix: '(inactivo)',
     movementFormTitle: 'Registrar movimiento',
     fields: {
@@ -230,7 +248,7 @@ const es = {
       cancel: 'Cancelar',
       hint: 'El cambio ajusta el saldo y queda registrado con quién lo hizo y el valor anterior.',
     },
-    badges: { edited: 'Editado', imported: 'Importado', request: 'Solicitado' },
+    badges: { edited: 'Editado', imported: 'Importado', request: 'Solicitado', adjustment: 'Ajuste' },
     employeesTitle: 'Equipo',
     editEmployee: { edit: 'Editar', save: 'Guardar', cancel: 'Cancelar' },
     import: {
@@ -378,6 +396,7 @@ const es = {
       INVALID_SHEET_URL: 'El enlace no es de una hoja de Google Sheets.',
       TOO_MANY_EMAILS: 'Un colaborador puede tener hasta 5 correos.',
       EMPTY_PATCH: 'No hay cambios para guardar.',
+      NO_CHANGES: 'No hay cambios: los saldos ya son esos.',
     },
   },
 };

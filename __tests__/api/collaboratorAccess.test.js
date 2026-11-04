@@ -6,6 +6,7 @@
 import cronHandler from '../../src/pages/api/cron/accrue-vacation';
 import employeesRoute from '../../src/pages/api/employees/index';
 import employeeRoute from '../../src/pages/api/employees/[id]';
+import balancesRoute from '../../src/pages/api/employees/[id]/balances';
 import importsRoute from '../../src/pages/api/imports/index';
 import importProfilesRoute from '../../src/pages/api/import-profiles/index';
 import suggestionsRoute from '../../src/pages/api/import-profiles/suggestions';
@@ -19,6 +20,7 @@ import requestsRoute from '../../src/pages/api/requests/index';
 import approveRoute from '../../src/pages/api/requests/[id]/approve';
 import rejectRoute from '../../src/pages/api/requests/[id]/reject';
 import cancelRoute from '../../src/pages/api/requests/[id]/cancel';
+import * as balanceAdjustmentService from '../../lib/services/balanceAdjustmentService';
 import * as employeesService from '../../lib/services/employeesService';
 import * as importLinkService from '../../lib/services/importLinkService';
 import * as importStagingService from '../../lib/services/importStagingService';
@@ -31,6 +33,7 @@ jest.mock('../../lib/firebase-admin', () => ({ getAdminAuth: () => ({ verifyIdTo
 jest.mock('../../lib/monitoring', () => ({ captureException: jest.fn() }));
 jest.mock('../../lib/services/employeesService');
 jest.mock('../../lib/services/movementsService');
+jest.mock('../../lib/services/balanceAdjustmentService');
 jest.mock('../../lib/services/requestsService');
 jest.mock('../../lib/services/importStagingService', () => ({
   ...jest.requireActual('../../lib/services/importStagingService'),
@@ -71,6 +74,7 @@ async function call(route, { method = 'GET', query = {}, body, as = member } = {
 const allServices = () => [
   ...Object.values(employeesService).filter((fn) => fn !== employeesService.resolveSignedInEmployee),
   ...Object.values(movementsService),
+  ...Object.values(balanceAdjustmentService),
   ...Object.values(requestsService),
   importStagingService.stageImport,
   importStagingService.previewImport,
@@ -169,6 +173,7 @@ describe('a collaborator cannot reach anything else', () => {
     ['POST /api/movements/:id/void', voidRoute, { method: 'POST', query: { id: 'x' }, body: { reason: 'r' } }],
     ['POST /api/requests/:id/approve (decide their own request)', approveRoute, { method: 'POST', query: { id: 'r1' } }],
     ['POST /api/requests/:id/reject', rejectRoute, { method: 'POST', query: { id: 'r1' }, body: { reason: 'r' } }],
+    ['POST /api/employees/:id/balances (force their own balances)', balancesRoute, { method: 'POST', query: { id: 'm1' }, body: { balances: { overtime: 999 }, note: 'x' } }],
     ['POST /api/employees (add a collaborator)', employeesRoute, { method: 'POST', body: { name: 'N', emails: ['n@x.com'] } }],
     ['PATCH /api/employees/:id (make themself admin)', employeeRoute, { method: 'PATCH', query: { id: 'm1' }, body: { role: 'admin' } }],
     ['POST /api/imports (load the sheet)', importsRoute, { method: 'POST', body: { sheetUrl: 'https://docs.google.com/spreadsheets/d/x' } }],
@@ -214,6 +219,16 @@ describe('an admin still reaches the same routes', () => {
     expect((await call(approveRoute, { as: admin, method: 'POST', query: { id: 'r1' } })).statusCode).toBe(200);
     expect((await call(rejectRoute, { as: admin, method: 'POST', query: { id: 'r2' }, body: { reason: 'No' } })).statusCode).toBe(200);
     expect(requestsService.rejectRequest).toHaveBeenCalledWith(admin, 'r2', 'No');
+  });
+
+  it('POST /api/employees/:id/balances forces the balances, with the admin as the author', async () => {
+    balanceAdjustmentService.adjustBalances.mockResolvedValue({ ...member, balances: { overtime: 5 } });
+    const body = { balances: { overtime: 5 }, note: 'Reinicio' };
+
+    const res = await call(balancesRoute, { as: admin, method: 'POST', query: { id: 'm1' }, body });
+
+    expect(res.statusCode).toBe(200);
+    expect(balanceAdjustmentService.adjustBalances).toHaveBeenCalledWith(admin, 'm1', body);
   });
 
   it('GET /api/movements (team feed) and PATCH /api/employees/:id are allowed', async () => {
