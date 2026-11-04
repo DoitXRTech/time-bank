@@ -177,6 +177,8 @@ The team's old Google Sheet is loaded through `npm run import:dry-run -- --sheet
 
 See `.env.example`. `NEXT_PUBLIC_*` is public by design — no secrets there. Never commit `.env*` or service account keys.
 
+**`overrides.jwks-rsa` in `package.json` is deliberate, do not remove it.** `firebase-admin` 14 pulls `jwks-rsa` 4, which `require()`s `jose` 6 (ESM-only). Vercel's function runtime refuses that (`ERR_REQUIRE_ESM`) and every `/api` route answered 500 on startup, even though it works on a local Node 24. Pinned to 3.2.x (`jose` 4, dual CJS/ESM) it loads anywhere. Reproduce the failure locally with `node --no-experimental-require-module -e "require('firebase-admin/auth')"`; revisit when Vercel's runtime supports `require(esm)`.
+
 ## Observability (pending)
 
 Sentry (`@sentry/nextjs`, org `doitxr`) is not wired yet. `lib/monitoring.js` and `src/lib/clientMonitoring.js` are the only seams to change when it is.
