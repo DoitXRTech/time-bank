@@ -62,9 +62,8 @@ export function EmployeeCreateForm({ teams, busy, error, onCreate, onCancel }) {
               ))}
             </select>
           </label>
-          <EmployeeRecordFields teams={teams} />
+          <EmployeeRecordFields teams={teams} requireCountry />
         </div>
-        <p className="mt-3 text-xs text-ink-soft">{es.admin.vacation.hint}</p>
 
         <ErrorNotice error={error} />
 

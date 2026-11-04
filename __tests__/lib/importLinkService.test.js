@@ -66,11 +66,23 @@ describe('linkImportProfile', () => {
     expect(mockFake.docs.get('employees/e1')).toMatchObject({
       team: 'Equipo A',
       hireDate: '2025-01-01',
-      socialSecurityDate: '2025-01-01',
       employmentType: 'payroll',
       scheduleStart: '8:00',
       scheduleEnd: '5:00',
     });
+  });
+
+  it('never copies the "Caja" date, not even from a person staged before it was dropped', async () => {
+    await linkImportProfile(admin, 'estefania-rojas', 'e1', { today });
+    const withLegacyDate = { ...mockFake.docs.get('importProfiles/estefania-rojas'), status: 'pending' };
+    withLegacyDate.employment = { ...withLegacyDate.employment, socialSecurityDate: '2025-01-01' };
+    mockFake.docs.set('importProfiles/estefania-rojas', withLegacyDate);
+    mockFake.docs.set('employees/e2', { name: 'Otra', active: true, emails: ['e2@x.com'], balances: {} });
+
+    await linkImportProfile(admin, 'estefania-rojas', 'e2', { today });
+
+    expect(mockFake.docs.get('employees/e2')).not.toHaveProperty('socialSecurityDate');
+    expect(mockFake.docs.get('employees/e2').hireDate).toBe('2025-01-01');
   });
 
   it('never overwrites what the employee record already has', async () => {

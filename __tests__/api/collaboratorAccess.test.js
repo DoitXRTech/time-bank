@@ -14,6 +14,7 @@ import linkRoute from '../../src/pages/api/import-profiles/[key]/link';
 import discardRoute from '../../src/pages/api/import-profiles/[key]/discard';
 import meRoute from '../../src/pages/api/me';
 import movementsRoute from '../../src/pages/api/movements/index';
+import byCountryRoute from '../../src/pages/api/movements/by-country';
 import movementRoute from '../../src/pages/api/movements/[id]/index';
 import voidRoute from '../../src/pages/api/movements/[id]/void';
 import requestsRoute from '../../src/pages/api/requests/index';
@@ -21,6 +22,7 @@ import approveRoute from '../../src/pages/api/requests/[id]/approve';
 import rejectRoute from '../../src/pages/api/requests/[id]/reject';
 import cancelRoute from '../../src/pages/api/requests/[id]/cancel';
 import * as balanceAdjustmentService from '../../lib/services/balanceAdjustmentService';
+import * as countryMovementsService from '../../lib/services/countryMovementsService';
 import * as employeesService from '../../lib/services/employeesService';
 import * as importLinkService from '../../lib/services/importLinkService';
 import * as importStagingService from '../../lib/services/importStagingService';
@@ -34,6 +36,7 @@ jest.mock('../../lib/monitoring', () => ({ captureException: jest.fn() }));
 jest.mock('../../lib/services/employeesService');
 jest.mock('../../lib/services/movementsService');
 jest.mock('../../lib/services/balanceAdjustmentService');
+jest.mock('../../lib/services/countryMovementsService');
 jest.mock('../../lib/services/requestsService');
 jest.mock('../../lib/services/importStagingService', () => ({
   ...jest.requireActual('../../lib/services/importStagingService'),
@@ -75,6 +78,7 @@ const allServices = () => [
   ...Object.values(employeesService).filter((fn) => fn !== employeesService.resolveSignedInEmployee),
   ...Object.values(movementsService),
   ...Object.values(balanceAdjustmentService),
+  ...Object.values(countryMovementsService),
   ...Object.values(requestsService),
   importStagingService.stageImport,
   importStagingService.previewImport,
@@ -174,6 +178,7 @@ describe('a collaborator cannot reach anything else', () => {
     ['POST /api/requests/:id/approve (decide their own request)', approveRoute, { method: 'POST', query: { id: 'r1' } }],
     ['POST /api/requests/:id/reject', rejectRoute, { method: 'POST', query: { id: 'r1' }, body: { reason: 'r' } }],
     ['POST /api/employees/:id/balances (force their own balances)', balancesRoute, { method: 'POST', query: { id: 'm1' }, body: { balances: { overtime: 999 }, note: 'x' } }],
+    ['POST /api/movements/by-country (register for a whole country)', byCountryRoute, { method: 'POST', body: { country: 'CR', type: 'holiday', amount: 1, dates: ['2026-11-02'], note: 'x' } }],
     ['POST /api/employees (add a collaborator)', employeesRoute, { method: 'POST', body: { name: 'N', emails: ['n@x.com'] } }],
     ['PATCH /api/employees/:id (make themself admin)', employeeRoute, { method: 'PATCH', query: { id: 'm1' }, body: { role: 'admin' } }],
     ['POST /api/imports (load the sheet)', importsRoute, { method: 'POST', body: { sheetUrl: 'https://docs.google.com/spreadsheets/d/x' } }],
@@ -229,6 +234,17 @@ describe('an admin still reaches the same routes', () => {
 
     expect(res.statusCode).toBe(200);
     expect(balanceAdjustmentService.adjustBalances).toHaveBeenCalledWith(admin, 'm1', body);
+  });
+
+  it('POST /api/movements/by-country registers for a country, with the admin as the author', async () => {
+    countryMovementsService.createCountryMovements.mockResolvedValue({ people: 2, created: 4, skipped: 0, failedEmployeeIds: [] });
+    const body = { country: 'CR', type: 'holiday', amount: 1, dates: ['2026-11-02', '2026-11-19'], note: 'Feriados' };
+
+    const res = await call(byCountryRoute, { as: admin, method: 'POST', body });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.result).toMatchObject({ created: 4 });
+    expect(countryMovementsService.createCountryMovements).toHaveBeenCalledWith(admin, body);
   });
 
   it('GET /api/movements (team feed) and PATCH /api/employees/:id are allowed', async () => {

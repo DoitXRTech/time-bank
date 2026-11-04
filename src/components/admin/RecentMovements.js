@@ -42,6 +42,7 @@ function MovementRow({ movement, employeeName, busy, onEdit, onVoid }) {
           {movement.source === 'import' && <span className="tag">{es.admin.badges.imported}</span>}
           {movement.source === 'request' && <span className="tag">{es.admin.badges.request}</span>}
           {movement.source === 'adjustment' && <span className="tag">{es.admin.badges.adjustment}</span>}
+          {movement.source === 'country' && <span className="tag">{es.admin.badges.country}</span>}
           {movement.editCount > 0 && <span className="tag">{es.admin.badges.edited}</span>}
         </span>
         {isVoided && (

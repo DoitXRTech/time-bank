@@ -15,7 +15,7 @@ function fail(field, reason, message) {
   throw new ValidationError(message, { field, reason });
 }
 
-function normalizeText(value, field, maxLength) {
+export function normalizeText(value, field, maxLength) {
   const text = typeof value === 'string' ? value.trim() : '';
   if (text.length > maxLength) fail(field, 'TOO_LONG', `${field} exceeds ${maxLength} characters`);
   return text;
@@ -26,7 +26,7 @@ function validateEmployeeId(employeeId) {
   return employeeId;
 }
 
-function validateType(type) {
+export function validateType(type) {
   if (!MOVEMENT_TYPE_LIST.includes(type)) {
     fail('type', 'INVALID_TYPE', `type must be one of: ${MOVEMENT_TYPE_LIST.join(', ')}`);
   }
@@ -47,7 +47,7 @@ export function validateAmount(rawAmount) {
   return amount;
 }
 
-function validateDate(date) {
+export function validateDate(date) {
   if (!isValidIsoDate(date)) fail('date', 'INVALID_DATE', 'date must be a valid YYYY-MM-DD date');
   return date;
 }

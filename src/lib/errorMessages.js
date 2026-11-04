@@ -17,6 +17,7 @@ const CONFLICT_REASON_MESSAGES = {
   START_DATE_MISMATCH: es.errors.startDateMismatch,
   ACCRUAL_ALREADY_RUNNING: es.errors.accrualAlreadyRunning,
   REQUEST_NOT_PENDING: es.errors.requestNotPending,
+  NO_EMPLOYEES_IN_COUNTRY: es.errors.noEmployeesInCountry,
 };
 
 const FIREBASE_AUTH_MESSAGES = {

@@ -37,59 +37,65 @@ describe('validateEmails', () => {
 });
 
 describe('validateNewEmployee', () => {
+  const base = { name: 'Ana', emails: ['ana@x.com'], country: 'CR' };
+
   it('normalizes the emails and defaults the role to member', () => {
     expect(
-      validateNewEmployee({ name: ' Ana Salas ', jobTitle: 'Diseñadora', emails: [' ANA@Effekktive.com '] }),
+      validateNewEmployee({ name: ' Ana Salas ', jobTitle: 'Diseñadora', emails: [' ANA@Effekktive.com '], country: 'CO' }),
     ).toEqual({
       name: 'Ana Salas',
       jobTitle: 'Diseñadora',
       emails: ['ana@effekktive.com'],
       role: 'member',
+      country: 'CO',
       team: '',
       hireDate: null,
-      socialSecurityDate: null,
       employmentType: null,
       scheduleStart: '',
       scheduleEnd: '',
-      vacationStartDate: null,
       creditPastMonths: false,
     });
   });
 
-  it('reads the employee record: team, hire dates, employment type and schedule', () => {
+  it('reads the employee record: country, team, hire date, employment type and schedule', () => {
     const record = validateNewEmployee({
-      name: 'Ana',
-      emails: ['ana@x.com'],
+      ...base,
+      country: 'AR',
       team: ' Diseño ',
       hireDate: '2023-08-15',
-      socialSecurityDate: '2025-02-15',
       employmentType: 'payroll',
       scheduleStart: '8:00 am ',
       scheduleEnd: '5:00 pm',
     });
-    expect(record).toMatchObject({ team: 'Diseño', hireDate: '2023-08-15', socialSecurityDate: '2025-02-15', employmentType: 'payroll', scheduleStart: '8:00 am', scheduleEnd: '5:00 pm' });
+    expect(record).toMatchObject({ country: 'AR', team: 'Diseño', hireDate: '2023-08-15', employmentType: 'payroll', scheduleStart: '8:00 am', scheduleEnd: '5:00 pm' });
+  });
+
+  it('requires a country, one of the four the company works from', () => {
+    expect(reasonOf(() => validateNewEmployee({ name: 'Ana', emails: ['ana@x.com'] }))).toBe('REQUIRED');
+    expect(reasonOf(() => validateNewEmployee({ ...base, country: '' }))).toBe('REQUIRED');
+    expect(reasonOf(() => validateNewEmployee({ ...base, country: 'MX' }))).toBe('INVALID_COUNTRY');
+    ['CR', 'CO', 'AR', 'EC'].forEach((country) => expect(validateNewEmployee({ ...base, country }).country).toBe(country));
   });
 
   it('treats empty record fields as not set and rejects invalid ones', () => {
-    const base = { name: 'Ana', emails: ['ana@x.com'] };
-    expect(validateNewEmployee({ ...base, hireDate: '', socialSecurityDate: '', employmentType: '' })).toMatchObject({ hireDate: null, socialSecurityDate: null, employmentType: null });
+    expect(validateNewEmployee({ ...base, hireDate: '', employmentType: '' })).toMatchObject({ hireDate: null, employmentType: null });
     expect(reasonOf(() => validateNewEmployee({ ...base, hireDate: '2023-02-30' }))).toBe('INVALID_DATE');
-    expect(reasonOf(() => validateNewEmployee({ ...base, socialSecurityDate: '15/02/2025' }))).toBe('INVALID_DATE');
     expect(reasonOf(() => validateNewEmployee({ ...base, employmentType: 'freelance' }))).toBe('INVALID_EMPLOYMENT_TYPE');
     expect(reasonOf(() => validateNewEmployee({ ...base, team: 'x'.repeat(61) }))).toBe('TOO_LONG');
     expect(reasonOf(() => validateNewEmployee({ ...base, scheduleStart: 'x'.repeat(61) }))).toBe('TOO_LONG');
   });
 
-  it('reads an optional vacation start date (empty means none) and the credit-past-months choice', () => {
-    const base = { name: 'Ana', emails: ['ana@x.com'] };
-    expect(validateNewEmployee({ ...base, vacationStartDate: '2025-01-01', creditPastMonths: true })).toMatchObject({ vacationStartDate: '2025-01-01', creditPastMonths: true });
-    expect(validateNewEmployee({ ...base, vacationStartDate: '' }).vacationStartDate).toBeNull();
-    expect(reasonOf(() => validateNewEmployee({ ...base, vacationStartDate: '2025-02-30' }))).toBe('INVALID_DATE');
+  it('reads the credit-past-months choice, and ignores a vacation start or a Caja date sent by a client', () => {
+    expect(validateNewEmployee({ ...base, creditPastMonths: true }).creditPastMonths).toBe(true);
     expect(reasonOf(() => validateNewEmployee({ ...base, creditPastMonths: 'yes' }))).toBe('INVALID_TYPE');
+
+    const record = validateNewEmployee({ ...base, vacationStartDate: '2020-01-01', socialSecurityDate: '2020-02-02' });
+    expect(record).not.toHaveProperty('vacationStartDate');
+    expect(record).not.toHaveProperty('socialSecurityDate');
   });
 
   it('defaults a missing job title to an empty string', () => {
-    expect(validateNewEmployee({ name: 'Ana', emails: ['ana@x.com'] }).jobTitle).toBe('');
+    expect(validateNewEmployee(base).jobTitle).toBe('');
   });
 
   it.each([
@@ -99,7 +105,7 @@ describe('validateNewEmployee', () => {
     [{ role: 'owner' }, 'INVALID_ROLE'],
     [{ name: 'x'.repeat(101) }, 'TOO_LONG'],
   ])('rejects %j with reason %s', (override, reason) => {
-    expect(reasonOf(() => validateNewEmployee({ name: 'Ana', emails: ['ana@x.com'], ...override }))).toBe(reason);
+    expect(reasonOf(() => validateNewEmployee({ ...base, ...override }))).toBe(reason);
   });
 });
 
@@ -111,14 +117,20 @@ describe('validateEmployeePatch', () => {
 
   it('accepts changes to the employee record, including clearing a date', () => {
     expect(validateEmployeePatch({ team: 'Marketing', hireDate: '2024-02-08', employmentType: 'professional-services' })).toEqual({ team: 'Marketing', hireDate: '2024-02-08', employmentType: 'professional-services' });
-    expect(validateEmployeePatch({ socialSecurityDate: null, employmentType: null, scheduleEnd: '' })).toEqual({ socialSecurityDate: null, employmentType: null, scheduleEnd: '' });
+    expect(validateEmployeePatch({ hireDate: null, employmentType: null, scheduleEnd: '' })).toEqual({ hireDate: null, employmentType: null, scheduleEnd: '' });
     expect(reasonOf(() => validateEmployeePatch({ employmentType: 'other' }))).toBe('INVALID_EMPLOYMENT_TYPE');
   });
 
-  it('accepts a start date, a cleared start date and the credit choice', () => {
-    expect(validateEmployeePatch({ vacationStartDate: '2025-01-01', creditPastMonths: false })).toEqual({ vacationStartDate: '2025-01-01', creditPastMonths: false });
-    expect(validateEmployeePatch({ vacationStartDate: null })).toEqual({ vacationStartDate: null });
-    expect(reasonOf(() => validateEmployeePatch({ vacationStartDate: '31/12/2026' }))).toBe('INVALID_DATE');
+  it('accepts a valid country but never an empty or unknown one', () => {
+    expect(validateEmployeePatch({ country: 'EC' })).toEqual({ country: 'EC' });
+    expect(reasonOf(() => validateEmployeePatch({ country: 'MX' }))).toBe('INVALID_COUNTRY');
+    expect(reasonOf(() => validateEmployeePatch({ country: '' }))).toBe('REQUIRED');
+  });
+
+  it('accepts the credit choice, and ignores a vacation start sent by a client (it comes from the hire date)', () => {
+    expect(validateEmployeePatch({ team: 'Marketing', creditPastMonths: false })).toEqual({ team: 'Marketing', creditPastMonths: false });
+    expect(reasonOf(() => validateEmployeePatch({ vacationStartDate: '2025-01-01' }))).toBe('EMPTY_PATCH');
+    expect(reasonOf(() => validateEmployeePatch({ socialSecurityDate: '2025-01-01' }))).toBe('EMPTY_PATCH');
   });
 
   it('validates a replacement email list', () => {

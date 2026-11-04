@@ -1,4 +1,5 @@
 import { ValidationError } from '../../lib/errors';
+import { COUNTRY_LIST } from './countries';
 import { EMPLOYMENT_TYPE_LIST } from './employmentTypes';
 import { isValidIsoDate } from './isoDate';
 import { ROLE_LIST, ROLES } from './movementTypes';
@@ -41,8 +42,12 @@ function validateOptionalDate(value, field) {
   return value;
 }
 
-/** Day from which vacations accrue (1 day per complete month). `null`/empty: no automatic accrual. */
-const validateVacationStartDate = (value) => validateOptionalDate(value, 'vacationStartDate');
+/** Where the person works (their holidays are the country's). Required to add someone. */
+function validateCountry(value) {
+  if (value === undefined || value === null || value === '') fail('country', 'REQUIRED', 'country is required');
+  if (!COUNTRY_LIST.includes(value)) fail('country', 'INVALID_COUNTRY', `country must be one of: ${COUNTRY_LIST.join(', ')}`);
+  return value;
+}
 
 function validateEmploymentType(value) {
   if (value === null || value === '') return null;
@@ -52,7 +57,7 @@ function validateEmploymentType(value) {
   return value;
 }
 
-/** Only meaningful the first time a start date is set: credit the months already completed */
+/** Only meaningful the first time vacations start accruing: credit the months already completed */
 function validateCreditPastMonths(value) {
   if (value === undefined) return false;
   if (typeof value !== 'boolean') fail('creditPastMonths', 'INVALID_TYPE', 'creditPastMonths must be a boolean');
@@ -80,9 +85,10 @@ export function validateEmails(value) {
 }
 
 /**
- * Besides the account data it reads the employee record: team, hire date (company), social security
- * date ("Caja"), employment type and schedule, all optional.
- * @returns {{ name: string, jobTitle: string, emails: string[], role: string, team: string, hireDate: string|null, socialSecurityDate: string|null, employmentType: string|null, scheduleStart: string, scheduleEnd: string, vacationStartDate: string|null, creditPastMonths: boolean }}
+ * Besides the account data it reads the employee record: country (required), team, hire date (the
+ * only date of the record, it is also when vacations start accruing), employment type and schedule.
+ * The vacation start date is not an input: it comes from the hire date and the employment type.
+ * @returns {{ name: string, jobTitle: string, emails: string[], role: string, country: string, team: string, hireDate: string|null, employmentType: string|null, scheduleStart: string, scheduleEnd: string, creditPastMonths: boolean }}
  * @throws {ValidationError} with metadata `{ field, reason }`
  */
 export function validateNewEmployee(input) {
@@ -91,13 +97,12 @@ export function validateNewEmployee(input) {
     jobTitle: optionalText(input?.jobTitle, 'jobTitle', MAX_JOB_TITLE_LENGTH),
     emails: validateEmails(input?.emails),
     role: input?.role === undefined ? ROLES.MEMBER : validateRole(input.role),
+    country: validateCountry(input?.country),
     team: optionalText(input?.team, 'team', MAX_TEAM_LENGTH),
     hireDate: validateOptionalDate(input?.hireDate ?? null, 'hireDate'),
-    socialSecurityDate: validateOptionalDate(input?.socialSecurityDate ?? null, 'socialSecurityDate'),
     employmentType: validateEmploymentType(input?.employmentType ?? null),
     scheduleStart: optionalText(input?.scheduleStart, 'scheduleStart', MAX_SCHEDULE_LENGTH),
     scheduleEnd: optionalText(input?.scheduleEnd, 'scheduleEnd', MAX_SCHEDULE_LENGTH),
-    vacationStartDate: validateVacationStartDate(input?.vacationStartDate ?? null),
     creditPastMonths: validateCreditPastMonths(input?.creditPastMonths),
   };
 }
@@ -110,12 +115,11 @@ export function validateEmployeePatch(input) {
   if (input?.role !== undefined) patch.role = validateRole(input.role);
   if (input?.team !== undefined) patch.team = optionalText(input.team, 'team', MAX_TEAM_LENGTH);
   if (input?.hireDate !== undefined) patch.hireDate = validateOptionalDate(input.hireDate, 'hireDate');
-  if (input?.socialSecurityDate !== undefined) patch.socialSecurityDate = validateOptionalDate(input.socialSecurityDate, 'socialSecurityDate');
+  if (input?.country !== undefined) patch.country = validateCountry(input.country);
   if (input?.employmentType !== undefined) patch.employmentType = validateEmploymentType(input.employmentType);
   if (input?.scheduleStart !== undefined) patch.scheduleStart = optionalText(input.scheduleStart, 'scheduleStart', MAX_SCHEDULE_LENGTH);
   if (input?.scheduleEnd !== undefined) patch.scheduleEnd = optionalText(input.scheduleEnd, 'scheduleEnd', MAX_SCHEDULE_LENGTH);
   if (input?.emails !== undefined) patch.emails = validateEmails(input.emails);
-  if (input?.vacationStartDate !== undefined) patch.vacationStartDate = validateVacationStartDate(input.vacationStartDate);
   if (input?.creditPastMonths !== undefined) patch.creditPastMonths = validateCreditPastMonths(input.creditPastMonths);
   if (input?.active !== undefined) {
     if (typeof input.active !== 'boolean') fail('active', 'INVALID_TYPE', 'active must be a boolean');

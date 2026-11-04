@@ -35,7 +35,8 @@ const es = {
       team: 'Área',
       teamPlaceholder: 'ej. Diseño',
       hireDate: 'Fecha de ingreso',
-      socialSecurityDate: 'Ingreso a la Caja',
+      country: 'País',
+      countryPlaceholder: 'Elija un país',
       employmentType: 'Contratación',
       scheduleStart: 'Hora de entrada',
       scheduleEnd: 'Hora de salida',
@@ -50,7 +51,7 @@ const es = {
     toggleDetails: { expand: 'Ver detalles de {name}', collapse: 'Ocultar detalles de {name}' },
     details: {
       hireDate: 'Ingreso',
-      socialSecurityDate: 'Caja',
+      country: 'País',
       employmentType: 'Contratación',
       schedule: 'Horario',
       vacation: 'Vacaciones',
@@ -66,6 +67,8 @@ const es = {
       lessThanMonth: 'menos de un mes',
     },
   },
+  // The countries the team works from (their holidays are the country's)
+  countries: { CR: 'Costa Rica', CO: 'Colombia', AR: 'Argentina', EC: 'Ecuador' },
   preview: {
     enter: 'Ver como colaborador',
     banner: 'Está viendo la plataforma como la vería un colaborador. Es solo una vista: sus permisos de administrador no cambian.',
@@ -103,6 +106,7 @@ const es = {
     voidedDetail: 'Anulado: {reason}',
     edited: 'Editado',
     adjustment: 'Ajuste',
+    country: 'Por país',
   },
   requests: {
     formTitle: 'Reportar horas o pedir días libres',
@@ -214,6 +218,34 @@ const es = {
     },
     inactiveSuffix: '(inactivo)',
     movementFormTitle: 'Registrar movimiento',
+    // The same movement for everybody in a country, on one or several days (e.g. the month's holidays)
+    countryMovement: {
+      audienceLabel: 'Registrar para',
+      audience: { employee: 'Un colaborador', country: 'Todo un país' },
+      country: 'País',
+      countryPlaceholder: 'Elija un país',
+      people: '{count} colaboradores activos en {country}',
+      peopleOne: '1 colaborador activo en {country}',
+      peopleNone: 'No hay colaboradores activos en {country}. Asigne el país en Colaboradores.',
+      withoutCountry: '{count} colaboradores activos no tienen país y no se incluyen.',
+      withoutCountryOne: '1 colaborador activo no tiene país y no se incluye.',
+      dates: 'Fechas',
+      dateToAdd: 'Fecha a agregar',
+      addDate: 'Agregar fecha',
+      datesHint: 'Agregue los feriados del mes, seguidos o no. Cada fecha suma 1 día de «Feriados por canjear» a cada colaborador activo del país.',
+      noDates: 'Todavía no agregó ninguna fecha.',
+      removeDate: 'Quitar {date}',
+      notePlaceholder: 'ej. Feriados de noviembre en Costa Rica',
+      noteHint: 'Es obligatoria: queda en el historial de cada persona.',
+      summary:
+        'Se sumará 1 día de «Feriados por canjear» por cada fecha a cada colaborador activo de {country} ({people}): {dates}. Total: {total} movimientos.',
+      submit: 'Registrar para el país',
+      confirmTitle: 'Registrar para {country}',
+      confirm: 'Registrar',
+      done: 'Listo: {created} movimientos para {people} personas.',
+      skipped: ' Se omitieron {skipped} que ya estaban registrados.',
+      failed: ' No se pudo registrar a {failed} personas: vuelva a intentarlo (lo ya registrado no se duplica).',
+    },
     fields: {
       employee: 'Colaborador',
       type: 'Tipo',
@@ -248,7 +280,7 @@ const es = {
       cancel: 'Cancelar',
       hint: 'El cambio ajusta el saldo y queda registrado con quién lo hizo y el valor anterior.',
     },
-    badges: { edited: 'Editado', imported: 'Importado', request: 'Solicitado', adjustment: 'Ajuste' },
+    badges: { edited: 'Editado', imported: 'Importado', request: 'Solicitado', adjustment: 'Ajuste', country: 'Por país' },
     employeesTitle: 'Equipo',
     editEmployee: { edit: 'Editar', save: 'Guardar', cancel: 'Cancelar' },
     import: {
@@ -328,10 +360,7 @@ const es = {
       done: 'Listo: se asociaron {movements} a {employee}.',
     },
     vacation: {
-      startLabel: 'Vacaciones desde',
-      since: 'Acumula vacaciones desde {date}',
-      none: 'Sin acumulación automática de vacaciones',
-      hint: 'Suma 1 día de vacaciones por cada mes completo desde esta fecha. Déjela vacía si no acumula (por ejemplo, pasantes).',
+      hint: 'Las vacaciones se suman solas: 1 día por cada mes completo desde la fecha de ingreso, solo para quienes están en planilla (CCSS) o por servicios profesionales. Pasantes y quien no tenga contratación definida no acumulan.',
       creditPast: 'Acreditar ahora los {count} meses ya cumplidos',
       creditPastHint: 'Desmárquelo si el saldo de vacaciones ya incluye esos meses.',
     },
@@ -377,6 +406,7 @@ const es = {
     profileNotPending: 'Esa información ya no está pendiente.',
     startDateMismatch: 'El colaborador ya tiene otra fecha de inicio de vacaciones; asociarla haría que se contradigan.',
     accrualAlreadyRunning: 'El colaborador ya acumuló días de vacaciones; asociar el saldo importado los contaría dos veces.',
+    noEmployeesInCountry: 'No hay colaboradores activos con ese país.',
     requestNotPending: 'Esa solicitud ya fue resuelta o cancelada.',
     popupClosed: 'Se cerró la ventana de Google antes de terminar.',
     validation: {
@@ -397,6 +427,8 @@ const es = {
       TOO_MANY_EMAILS: 'Un colaborador puede tener hasta 5 correos.',
       EMPTY_PATCH: 'No hay cambios para guardar.',
       NO_CHANGES: 'No hay cambios: los saldos ya son esos.',
+      INVALID_COUNTRY: 'El país no es válido.',
+      TOO_MANY_DATES: 'Elija como máximo 31 fechas.',
     },
   },
 };

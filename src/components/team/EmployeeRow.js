@@ -6,6 +6,7 @@ import { MAX_EMAILS_PER_EMPLOYEE } from '../../domain/employeeValidation';
 import { formatDate, todayIsoDate } from '../../domain/format';
 import { ROLE_LIST, ROLES } from '../../domain/movementTypes';
 import { tenureOf } from '../../domain/tenure';
+import { hasVacationAccrual } from '../../domain/vacationEligibility';
 
 function EmailChip({ email, removable, onRemove, disabled }) {
   return (
@@ -118,7 +119,7 @@ function Detail({ label, children }) {
   );
 }
 
-/** The employee record at a glance: hire date with tenure, social security date, employment, schedule */
+/** The employee record at a glance: hire date with tenure, country, employment, schedule, vacation accrual */
 function RecordDetails({ employee }) {
   const labels = es.team.details;
   const tenure = tenureText(tenureOf(employee.hireDate, todayIsoDate()));
@@ -134,11 +135,11 @@ function RecordDetails({ employee }) {
           </>
         )}
       </Detail>
-      <Detail label={labels.socialSecurityDate}>{employee.socialSecurityDate && formatDate(employee.socialSecurityDate)}</Detail>
+      <Detail label={labels.country}>{employee.country && es.countries[employee.country]}</Detail>
       <Detail label={labels.employmentType}>{employee.employmentType && es.team.employmentTypes[employee.employmentType]}</Detail>
       <Detail label={labels.schedule}>{schedule}</Detail>
       <Detail label={labels.vacation}>
-        {employee.vacationStartDate
+        {hasVacationAccrual(employee)
           ? interpolate(labels.vacationSince, { date: formatDate(employee.vacationStartDate) })
           : labels.vacationNone}
       </Detail>

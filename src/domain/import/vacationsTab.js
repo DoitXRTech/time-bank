@@ -79,7 +79,6 @@ export function parseVacationsTab(rows) {
     const employment = {
       team,
       hireDate: parseSheetDate(cells[COLUMN.COMPANY_DATE] ?? '')?.iso ?? null,
-      socialSecurityDate: parseSheetDate(cells[COLUMN.SOCIAL_SECURITY_DATE] ?? '')?.iso ?? null,
       employmentType: parseEmploymentType(cells[COLUMN.METHOD] ?? ''),
       scheduleStart: cleanSchedule(cells[COLUMN.SCHEDULE_START] ?? ''),
       scheduleEnd: cleanSchedule(cells[COLUMN.SCHEDULE_END] ?? ''),

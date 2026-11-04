@@ -70,7 +70,7 @@ src/pages, components, hooks, context, lib   client
 
 | Collection | Fields |
 |---|---|
-| `employees/{id}` | `name`, `jobTitle`, `emails` (array, 1–5, lowercase, unique across employees: the whitelist; personal + company), `role` (`admin`\|`member`), `active`, `balances: { overtime, vacation, holiday, birthday }`, `team`, `hireDate` (company), `socialSecurityDate` ("Caja"), `employmentType` (`payroll`|`professional-services`|`internship`), `scheduleStart`/`scheduleEnd` (free text), `vacationStartDate`, `vacationAccruedMonths`, audit fields |
+| `employees/{id}` | `name`, `jobTitle`, `emails` (array, 1–5, lowercase, unique across employees: the whitelist; personal + company), `role` (`admin`\|`member`), `active`, `balances: { overtime, vacation, holiday, birthday }`, `country` (`CR`|`CO`|`AR`|`EC`, required when adding someone), `team`, `hireDate` (the only date of the record), `employmentType` (`payroll`|`professional-services`|`internship`), `scheduleStart`/`scheduleEnd` (free text), `vacationStartDate` (derived, see "Vacation accrual"), `vacationAccruedMonths`, audit fields; older docs may still hold a `socialSecurityDate` that nothing reads |
 | `movements/{id}` | `employeeId`, `type` (`overtime`\|`vacation`\|`holiday`), `amount` (signed, multiple of 0.25), `date`, `note`, `createdBy`, `createdAt`, `voidedAt`/`voidedBy`/`voidReason` |
 | `requests/{id}` | `employeeId`, `kind` (`overtime`|`vacation`|`holiday`|`birthday`: the balance it is about), `action` (`report`|`redeem`; absent on older docs, see `defaultAction`), `status`|`vacation`), `status` (`pending`\|`approved`\|`rejected`\|`cancelled`), `amount` (positive), `date`, `period` (`YYYY-MM`, overtime only), `note`, `createdAt`, `decidedAt`/`decidedBy`/`decisionNote`, `movementId` |
 
@@ -85,7 +85,17 @@ Rules that must not be broken:
 
 ### Employee record ("Colaboradores" page)
 
-`/team` (admin only, nav tab "Colaboradores") is the register of collaborators: search + team + status filters, one row per person with hire date (and tenure via `src/domain/tenure.js`), social security date, employment type, schedule and vacation accrual, plus emails, edit and active toggle, and the form to add someone. Pure filtering lives in `src/domain/employeeFilters.js`. These fields are HR data: only admins list everyone; a member only ever receives their own record from `GET /api/employees`. Do not add a screen that shows them to other members.
+`/team` (admin only, nav tab "Colaboradores") is the register of collaborators: search + team + status filters, one row per person with hire date (and tenure via `src/domain/tenure.js`), country, employment type, schedule and vacation accrual, plus emails, edit and active toggle, and the form to add someone. Pure filtering lives in `src/domain/employeeFilters.js`. These fields are HR data: only admins list everyone; a member only ever receives their own record from `GET /api/employees`. Do not add a screen that shows them to other members.
+
+### Country, and movements for a whole country
+
+Every collaborator has a **country** (`CR`, `CO`, `AR`, `EC`: `src/domain/countries.js`, names in `es.countries`) because holidays differ by country. It is **required when adding someone** (server: `validateNewEmployee`; form: `EmployeeRecordFields requireCountry`); older records without one can still be saved and set it later, but never go back to none. The sheet does not carry it, so existing people have to be assigned by hand.
+
+**Panel administrador → Registrar movimiento → "Todo un país"** (`CountryMovementForm`, `POST /api/movements/by-country`, admin only) registers the same movement for every **active** collaborator of the chosen country on **one or several days, not necessarily consecutive** (the month's holidays): pick the country, add the dates, write the **required** note, and confirm the summary. **Each date is one day of "Feriados por canjear" (+1 d)**: there is no type or amount to choose (the number of dates is the number of days) and the server ignores any a client sends (`COUNTRY_HOLIDAY`). Other kinds of movement are still registered one person at a time. The confirmation reads "Se sumará 1 día de «Feriados por canjear» por cada fecha a cada colaborador activo de Costa Rica (12 personas): …. Total: 24 movimientos".
+
+- `createCountryMovements` (`lib/services/countryMovementsService.js`): one transaction **per person** (their movements for all the dates + one balance change), so a failure affects only them and is reported (`failedEmployeeIds`); max 31 dates. Movements are normal ones (`source: 'country'`, tagged "Por país", with `country` and a shared `batchId`) and can be edited or voided one by one.
+- **Running it again credits nothing twice:** a date already registered for that person, type and country (and not voided) is skipped and counted in `skipped`. People without a country, inactive ones and other countries are never touched; a country with nobody active answers `NO_EMPLOYEES_IN_COUNTRY`.
+- Rules in `src/domain/countryMovement.js`: valid country, 1–31 valid dates (repeats dropped), required note.
 
 ### Forcing a balance ("Ajustar" in the admin summary)
 
@@ -133,12 +143,14 @@ Business logic belongs in `lib/services/` or `src/domain/`, not in routes or com
 
 ## Vacation accrual (automatic)
 
-Same rule as the team's sheet (`DATEDIF(start, TODAY(), "m")`): **1 vacation day per complete month** since the employee's `vacationStartDate` (empty = no accrual, e.g. interns).
+Same rule as the team's sheet (`DATEDIF(start, TODAY(), "m")`): **1 vacation day per complete month** since the employee's `vacationStartDate`, and **only for `payroll` (CCSS) and `professional-services` (S.P)**: interns and people with no contract type set do not accrue (`src/domain/vacationEligibility.js`, also enforced by the daily job).
+
+- **The hire date is the only date.** The form has no "Caja" date and no "Vacaciones desde": the server derives `vacationStartDate` from `hireDate` + `employmentType` (`vacationStartFor` on create, `nextVacationStart` on edit); clients cannot send it. On edit it moves only when the hire date or the contract type changes: the form always re-sends both, so saving anything else never touches a start date loaded from the sheet (which may differ from the hire date). Changing only the contract type keeps an existing start (so months already in the balance are not credited twice); a contract that does not earn vacations clears it (the counter is kept). **Someone with a start date but no contract type no longer accrues until it is set.**
 
 - Pure rule in `src/domain/vacationAccrual.js` (`completedMonths`, `accrualDate`, `monthsToCredit`): a month completes on the same day-of-month it started; from the 31st a short month completes on the 1st of the next one.
 - `lib/services/vacationAccrualService.js` credits the missing months as `source: 'accrual'` movements dated when each was earned, in transactions of ≤200 months, moving `balances.vacation` and `vacationAccruedMonths` together. Movement ids are deterministic (`accrual-{employeeId}-{n}`), so a run can never double-credit; a month an admin voids is not credited again (the counter already passed it).
 - **Daily job:** Vercel Cron (`vercel.json`, 06:00 UTC = midnight Costa Rica) calls `GET /api/cron/accrue-vacation` with `Authorization: Bearer $CRON_SECRET`. Without `CRON_SECRET` the route refuses to run. It answers 500 if any employee failed. "Today" is the Costa Rica day (`lib/appDate.js`).
-- Setting a start date for the first time (create or edit) lets the admin choose to credit the months already completed (`creditPastMonths`, checked by default) or to count from now because the balance already includes them. Correcting an existing date keeps the counter: the job only tops up, it never takes days back (void the extra movements by hand).
+- The first time accrual starts (create, or setting the hire date / contract type of someone without a start) lets the admin choose to credit the months already completed (`creditPastMonths`, checked by default) or to count from now because the balance already includes them. Correcting the hire date keeps the counter: the job only tops up, it never takes days back (void the extra movements by hand).
 - The accrual only creates +1 vacation movements. Days taken are still registered by an admin as −1 movements.
 
 ## Requests (collaborator asks, admin decides)
@@ -182,7 +194,7 @@ The team's old Google Sheet is loaded through `npm run import:dry-run -- --sheet
 - Vacation start dates are resolved per person: the sheet counts from either the Caja or the Spazio date (chosen by hand per row), so the candidate that reproduces the sheet's total on the import day is used (in the real sheet all 25 people resolve). An apply mode must set `creditPastMonths: false` because the opening balance already includes those months.
 - Only identical names are matched automatically; fuzzy matches are suggestions that a human confirms in `import-data/name-mapping.json` (`{ "name in overtime tab": "full name" }`).
 - Overtime rows are cross-checked against the sheet's running balance; hours carried over before the ledger become an opening movement; unreadable dates borrow the person's previous date. Everything assumed is listed in the report.
-- The employee record (team, both hire dates, "Método" -> employment type, schedule) is read from the vacations tab, kept on the pending person and copied to the employee when linked, **only into fields the employee has empty** (what an admin typed is never overwritten). "No aplica" / "Pendiente" become empty.
+- The employee record (team, hire date, "Método" -> employment type, schedule) is read from the vacations tab, kept on the pending person and copied to the employee when linked, **only into fields the employee has empty** (what an admin typed is never overwritten). "No aplica" / "Pendiente" become empty. The "Caja" column is not part of the record any more (an allowlist in `importLinkService` keeps it out even for people staged before); it is still read as a candidate when resolving the vacation start date.
 
 ## Git / PR
 

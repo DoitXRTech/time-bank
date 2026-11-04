@@ -46,12 +46,11 @@ describe('parseVacationsTab: the employee record', () => {
   const record = (name, start, end, method, caja, spazio) => [name, start, end, method, caja, spazio, '10', '', '0', '10'];
   const parse = (...rows) => parseVacationsTab([HEADER, ...rows]).employees;
 
-  it('reads team, schedule, employment type and both hire dates', () => {
+  it('reads team, schedule, employment type and the hire date (the "Caja" date is not part of the record)', () => {
     const [ana] = parse(record('Ana Prueba', '8:00 am ', '5:00 pm', 'CCSS', '15/02/2025', '15/08/2023'));
     expect(ana.employment).toEqual({
       team: 'Equipo Demo',
       hireDate: '2023-08-15',
-      socialSecurityDate: '2025-02-15',
       employmentType: 'payroll',
       scheduleStart: '8:00 am',
       scheduleEnd: '5:00 pm',
@@ -79,12 +78,19 @@ describe('parseVacationsTab: the employee record', () => {
     expect(intern.employment.scheduleEnd).toBe('L-M-V 5:00 PM M-J 12:00 md');
     // A lowercase "s" must survive (a lost backslash in the whitespace regex once turned every "s" into a space)
     expect(intern.employment.scheduleStart).toBe('Lunes a viernes 8:00 am');
-    expect(pending.employment).toMatchObject({ scheduleStart: '', scheduleEnd: '', hireDate: null, socialSecurityDate: null });
+    expect(pending.employment).toMatchObject({ scheduleStart: '', scheduleEnd: '', hireDate: null });
   });
 
-  it('treats "No aplica" as no social security date', () => {
-    const [intern] = parse(record('Pasante Uno', '8:00', '5:00', 'Pasantía', 'No aplica', '2/03/2026'));
-    expect(intern.employment).toMatchObject({ socialSecurityDate: null, hireDate: '2026-03-02' });
+  it('does not carry the "Caja" date into the record, but still uses it to find when the sheet counts vacations from', () => {
+    const [ana, intern] = parse(
+      record('Ana Prueba', '8:00', '5:00', 'CCSS', '15/02/2025', '15/08/2023'),
+      record('Pasante Uno', '8:00', '5:00', 'Pasantía', 'No aplica', '2/03/2026'),
+    );
+
+    expect(ana.employment).not.toHaveProperty('socialSecurityDate');
+    expect(ana.startDateCandidates).toEqual(['2025-02-15', '2023-08-15']);
+    expect(intern.employment).toMatchObject({ hireDate: '2026-03-02' });
+    expect(intern.startDateCandidates).toEqual(['2026-03-02']);
   });
 });
 

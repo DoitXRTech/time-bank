@@ -171,92 +171,134 @@ describe('resolveSignedInEmployee (the whitelist)', () => {
 describe('createEmployee', () => {
   const admin = { id: 'admin-1', role: 'admin' };
 
-  it('stores the emails list and starts with zero balances', async () => {
-    const employee = await createEmployee(admin, { name: 'Luis', emails: ['Luis@Gmail.com', 'luis@effekktive.com'] });
-    expect(employee).toMatchObject({ name: 'Luis', emails: ['luis@gmail.com', 'luis@effekktive.com'], active: true });
+  it('stores the emails list and the country, and starts with zero balances', async () => {
+    const employee = await createEmployee(admin, { name: 'Luis', emails: ['Luis@Gmail.com', 'luis@effekktive.com'], country: 'CO' });
+    expect(employee).toMatchObject({ name: 'Luis', emails: ['luis@gmail.com', 'luis@effekktive.com'], country: 'CO', active: true });
     expect(employee.balances).toEqual({ overtime: 0, vacation: 0, holiday: 0, birthday: 0 });
+  });
+
+  it('requires the country and writes nothing without it', async () => {
+    await expect(createEmployee(admin, { name: 'Luis', emails: ['luis@x.com'] })).rejects.toMatchObject({ metadata: { field: 'country', reason: 'REQUIRED' } });
+    await expect(createEmployee(admin, { name: 'Luis', emails: ['luis@x.com'], country: 'MX' })).rejects.toMatchObject({ metadata: { reason: 'INVALID_COUNTRY' } });
+    expect(mockStore.size).toBe(0);
   });
 
   it('rejects an email that already belongs to another employee', async () => {
     seedEmployee('ana', { emails: ['ana@gmail.com'] });
-    await expect(createEmployee(admin, { name: 'Impostor', emails: ['ANA@gmail.com'] })).rejects.toMatchObject({
+    await expect(createEmployee(admin, { name: 'Impostor', emails: ['ANA@gmail.com'], country: 'CR' })).rejects.toMatchObject({
       metadata: { reason: 'EMAIL_TAKEN' },
     });
   });
 
   it('also detects an email held by a pre-multi-email document', async () => {
     mockStore.set('legacy', { name: 'Kevin', email: 'kevin@x.com' });
-    await expect(createEmployee(admin, { name: 'Other', emails: ['kevin@x.com'] })).rejects.toBeInstanceOf(ConflictError);
+    await expect(createEmployee(admin, { name: 'Other', emails: ['kevin@x.com'], country: 'CR' })).rejects.toBeInstanceOf(ConflictError);
   });
 });
 
-describe('vacation start date', () => {
+describe('vacation accrual starts at the hire date, for the contract types that earn it', () => {
   const admin = { id: 'admin-1', role: 'admin' };
   const context = { signedInEmail: 'admin@effekktive.com', today: '2026-11-02' };
+  const newcomer = { name: 'Luis', emails: ['luis@x.com'], country: 'CR' };
+  const createdId = () => `auto-${mockAutoId}`;
 
   beforeEach(() => {
     seedEmployee('admin-1', { role: 'admin', emails: ['admin@effekktive.com'] });
     seedEmployee('ana');
   });
 
-  it('on creation, can credit the months already completed: the counter starts at 0 and the job pays them', async () => {
-    const created = await createEmployee(admin, { name: 'Luis', emails: ['luis@x.com'], vacationStartDate: '2025-01-01', creditPastMonths: true }, { today: '2026-11-02' });
+  it('on creation, a payroll person accrues from the hire date; crediting past months starts the counter at 0 and the job pays them', async () => {
+    const created = await createEmployee(admin, { ...newcomer, employmentType: 'payroll', hireDate: '2025-01-01', creditPastMonths: true }, { today: '2026-11-02' });
 
     expect(created.vacationStartDate).toBe('2025-01-01');
-    expect(mockStore.get(`auto-${mockAutoId}`).vacationAccruedMonths).toBe(0);
-    expect(mockStore.get(`auto-${mockAutoId}`)).not.toHaveProperty('creditPastMonths');
-    expect(accrueEmployeeVacation).toHaveBeenCalledWith(`auto-${mockAutoId}`, '2026-11-02');
+    expect(mockStore.get(createdId()).vacationAccruedMonths).toBe(0);
+    expect(mockStore.get(createdId())).not.toHaveProperty('creditPastMonths');
+    expect(accrueEmployeeVacation).toHaveBeenCalledWith(createdId(), '2026-11-02');
   });
 
-  it('on creation, can start counting from now: past months are considered already in the balance', async () => {
-    await createEmployee(admin, { name: 'Luis', emails: ['luis@x.com'], vacationStartDate: '2025-01-01' }, { today: '2026-11-02' });
-    expect(mockStore.get(`auto-${mockAutoId}`).vacationAccruedMonths).toBe(22);
+  it('on creation, professional services accrue too, and without credit the past months count as already in the balance', async () => {
+    await createEmployee(admin, { ...newcomer, employmentType: 'professional-services', hireDate: '2025-01-01' }, { today: '2026-11-02' });
+
+    expect(mockStore.get(createdId())).toMatchObject({ vacationStartDate: '2025-01-01', vacationAccruedMonths: 22 });
   });
 
-  it('without a start date there is no accrual at all', async () => {
-    await createEmployee(admin, { name: 'Intern', emails: ['intern@x.com'] }, { today: '2026-11-02' });
-    expect(mockStore.get(`auto-${mockAutoId}`)).not.toHaveProperty('vacationAccruedMonths');
+  it.each([
+    ['an intern', { employmentType: 'internship', hireDate: '2025-01-01' }],
+    ['a person with no contract type', { hireDate: '2025-01-01' }],
+    ['a payroll person with no hire date yet', { employmentType: 'payroll' }],
+  ])('on creation, %s does not accrue at all', async (_label, record) => {
+    const created = await createEmployee(admin, { ...newcomer, ...record }, { today: '2026-11-02' });
+
+    expect(created.vacationStartDate).toBeNull();
+    expect(mockStore.get(createdId())).not.toHaveProperty('vacationAccruedMonths');
     expect(accrueEmployeeVacation).not.toHaveBeenCalled();
   });
 
-  it('setting the first start date with credit starts the counter at 0 and runs the accrual right away', async () => {
-    await updateEmployee(admin, 'ana', { vacationStartDate: '2026-06-15', creditPastMonths: true }, context);
+  it('a client cannot set the start date: it only comes from the hire date', async () => {
+    const created = await createEmployee(admin, { ...newcomer, employmentType: 'payroll', vacationStartDate: '2020-01-01' }, { today: '2026-11-02' });
 
-    expect(mockStore.get('ana')).toMatchObject({ vacationStartDate: '2026-06-15', vacationAccruedMonths: 0 });
-    expect(mockStore.get('ana')).not.toHaveProperty('creditPastMonths');
-    expect(accrueEmployeeVacation).toHaveBeenCalledWith('ana', '2026-11-02');
+    expect(created.vacationStartDate).toBeNull();
   });
 
-  it('setting the first start date without credit marks the past months as already counted', async () => {
-    await updateEmployee(admin, 'ana', { vacationStartDate: '2026-06-15' }, context);
-    expect(mockStore.get('ana').vacationAccruedMonths).toBe(4);
+  it('entering the hire date of a payroll person for the first time starts the accrual and runs it right away', async () => {
+    seedEmployee('luis', { employmentType: 'payroll' });
+
+    await updateEmployee(admin, 'luis', { hireDate: '2026-06-15', creditPastMonths: true }, context);
+
+    expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: '2026-06-15', vacationAccruedMonths: 0 });
+    expect(mockStore.get('luis')).not.toHaveProperty('creditPastMonths');
+    expect(accrueEmployeeVacation).toHaveBeenCalledWith('luis', '2026-11-02');
   });
 
-  it('correcting an existing start date keeps the counter: the job only tops up, it never takes back', async () => {
-    seedEmployee('luis', { vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+  it('setting the contract type of someone who already has a hire date starts it, marking past months as counted without credit', async () => {
+    seedEmployee('luis', { hireDate: '2026-06-15' });
 
-    await updateEmployee(admin, 'luis', { vacationStartDate: '2026-05-15', creditPastMonths: true }, context);
+    await updateEmployee(admin, 'luis', { employmentType: 'payroll' }, context);
+
+    expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+  });
+
+  it('correcting the hire date keeps the counter: the job only tops up, it never takes back', async () => {
+    seedEmployee('luis', { employmentType: 'payroll', hireDate: '2026-06-15', vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+
+    await updateEmployee(admin, 'luis', { hireDate: '2026-05-15', creditPastMonths: true }, context);
 
     expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: '2026-05-15', vacationAccruedMonths: 4 });
     expect(accrueEmployeeVacation).toHaveBeenCalledTimes(1);
   });
 
-  it('saving the same start date again, or other fields, does not run the accrual', async () => {
-    seedEmployee('luis', { vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+  it('saving the same hire date and type again (what the edit form always sends) never moves a start date loaded from the sheet', async () => {
+    // The sheet counted from another date than the hire date; editing a phone number must not change that
+    seedEmployee('luis', { employmentType: 'payroll', hireDate: '2023-08-15', vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
 
-    await updateEmployee(admin, 'luis', { vacationStartDate: '2026-06-15', name: 'Luis P' }, context);
+    await updateEmployee(admin, 'luis', { hireDate: '2023-08-15', employmentType: 'payroll', team: 'Diseño', name: 'Luis P' }, context);
 
+    expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: '2026-06-15', vacationAccruedMonths: 4, team: 'Diseño' });
     expect(accrueEmployeeVacation).not.toHaveBeenCalled();
-    expect(mockStore.get('luis').vacationAccruedMonths).toBe(4);
   });
 
-  it('clearing the start date stops the accrual', async () => {
-    seedEmployee('luis', { vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+  it('changing only the contract type keeps a start that already exists, so months already in the balance are not credited twice', async () => {
+    seedEmployee('luis', { hireDate: '2023-08-15', vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
 
-    await updateEmployee(admin, 'luis', { vacationStartDate: null }, context);
+    await updateEmployee(admin, 'luis', { employmentType: 'professional-services' }, context);
 
-    expect(mockStore.get('luis').vacationStartDate).toBeNull();
+    expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
     expect(accrueEmployeeVacation).not.toHaveBeenCalled();
+  });
+
+  it('moving someone to a contract that does not earn vacations stops the accrual and keeps what was accrued', async () => {
+    seedEmployee('luis', { employmentType: 'payroll', hireDate: '2026-06-15', vacationStartDate: '2026-06-15', vacationAccruedMonths: 4 });
+
+    await updateEmployee(admin, 'luis', { employmentType: 'internship' }, context);
+
+    expect(mockStore.get('luis')).toMatchObject({ vacationStartDate: null, vacationAccruedMonths: 4 });
+    expect(accrueEmployeeVacation).not.toHaveBeenCalled();
+  });
+
+  it('sets the country of an older record that had none', async () => {
+    await updateEmployee(admin, 'ana', { country: 'EC' }, context);
+
+    expect(mockStore.get('ana').country).toBe('EC');
   });
 });
 

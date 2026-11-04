@@ -63,7 +63,15 @@ jest.mock('../../lib/firebase-admin', () => ({
 jest.mock('../../lib/monitoring', () => ({ captureException: jest.fn() }));
 
 const seedEmployee = (id, fields = {}) =>
-  mockDocs.set(`employees/${id}`, { name: id, active: true, balances: { vacation: 0 }, vacationStartDate: '2026-06-15', vacationAccruedMonths: 0, ...fields });
+  mockDocs.set(`employees/${id}`, {
+    name: id,
+    active: true,
+    employmentType: 'payroll',
+    balances: { vacation: 0 },
+    vacationStartDate: '2026-06-15',
+    vacationAccruedMonths: 0,
+    ...fields,
+  });
 const movementsOf = (employeeId) => [...mockDocs.entries()].filter(([path, data]) => path.startsWith('movements/') && data.employeeId === employeeId);
 
 beforeEach(() => {
@@ -128,6 +136,18 @@ describe('accrueEmployeeVacation', () => {
     expect(movementsOf('no-date')).toHaveLength(0);
   });
 
+  it('credits professional services like payroll, but never an intern or someone with no contract type, even with a start date', async () => {
+    seedEmployee('freelancer', { employmentType: 'professional-services' });
+    seedEmployee('intern', { employmentType: 'internship' });
+    seedEmployee('undefined-type', { employmentType: undefined });
+
+    expect(await accrueEmployeeVacation('freelancer', '2026-11-02')).toBe(4);
+    expect(await accrueEmployeeVacation('intern', '2026-11-02')).toBe(0);
+    expect(await accrueEmployeeVacation('undefined-type', '2026-11-02')).toBe(0);
+    expect(movementsOf('intern')).toHaveLength(0);
+    expect(mockDocs.get('employees/intern').balances.vacation).toBe(0);
+  });
+
   it('splits a long catch-up into several transactions instead of one huge write', async () => {
     seedEmployee('veteran', { vacationStartDate: '2005-01-01' }); // 250+ months
 
@@ -144,6 +164,7 @@ describe('accrueAllEmployees', () => {
     seedEmployee('ana');
     seedEmployee('luis', { vacationStartDate: '2026-08-26' });
     seedEmployee('intern', { vacationStartDate: null });
+    seedEmployee('trainee', { employmentType: 'internship' });
     seedEmployee('gone', { active: false });
 
     const summary = await accrueAllEmployees('2026-11-02');
