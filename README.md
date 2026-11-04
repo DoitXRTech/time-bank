@@ -1,4 +1,4 @@
-# time-bank
+# time-bank 
 
 Internal app to track the team's **overtime hours, vacation days and holidays pending to exchange**. Next.js + Tailwind + Firebase. UI in Spanish, code in English.
 
